@@ -1,0 +1,62 @@
+[package]
+name = "rig-ollama"
+version = "0.0.1"
+edition = { workspace = true }
+license = "MIT"
+readme = "README.md"
+description = "AWS Bedrock model provider for Rig integration."
+
+[lib]
+name = "rig_ollama"
+path = "src/lib.rs"
+
+
+
+[dependencies]
+async-stream = { workspace = true }
+base64 = { workspace = true }
+rig-core = { path = "../rig-core", features = [
+    "worker",
+    "rmcp",
+] }
+rig-derive = { path = "../rig-core/rig-core-derive" }
+schemars = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+url = { workspace = true }
+reqwest = { workspace = true, features = ["json", "stream", "multipart"] }
+tracing-futures = { workspace = true, features = ["futures-03"] }
+futures = { workspace = true }
+thiserror = { workspace = true }
+reqwest-eventsource = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+reqwest = { workspace = true, features = ["json", "stream"] }
+tracing-subscriber = { workspace = true }
+
+
+[[example]]
+name = "rag_ollama"
+required-features = ["derive"]
+
+
+
+[[example]]
+name = "vector_search_ollama"
+required-features = ["derive"]
+
+[[example]]
+name = "agent_with_ollama"
+
+[[example]]
+name = "ollama_streaming"
+
+[[example]]
+name = "ollama_streaming_pause_control"
+
+[[example]]
+name = "ollama_streaming_with_tools"

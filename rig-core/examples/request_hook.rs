@@ -84,7 +84,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .build();
 
     let session_id = "abc123";
-    let hook = SessionIdHook { session_id };
+    let hook: SessionIdHook<'_> = SessionIdHook { session_id };
 
     // Prompt the agent and print the response
     comedian_agent

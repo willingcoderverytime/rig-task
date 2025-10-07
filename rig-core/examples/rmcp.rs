@@ -9,6 +9,7 @@ use rig::{
     providers::openai,
 };
 use rmcp::{
+    ErrorData as McpError,
     RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::*,
@@ -98,15 +99,15 @@ impl Counter {
     //     )]))
     // }
 
-    #[tool(description = "Calculate the sum of two numbers")]
-    fn sum(
-        &self,
-        Parameters(StructRequest { a, b }): Parameters<StructRequest>,
-    ) -> Result<CallToolResult, ErrorData> {
-        Ok(CallToolResult::success(vec![Content::text(
-            (a + b).to_string(),
-        )]))
-    }
+    // #[tool(description = "Calculate the sum of two numbers")]
+    // fn sum(
+    //     &self,
+    //     Parameters(StructRequest { a, b }): Parameters<StructRequest>,
+    // ) -> Result<CallToolResult, McpError> {
+    //     Ok(CallToolResult::success(vec![Content::text(
+    //         (a + b).to_string(),
+    //     )]))
+    // }
 }
 #[tool_handler]
 impl ServerHandler for Counter {
@@ -242,6 +243,9 @@ async fn main() -> anyhow::Result<()> {
         client_info: Implementation {
             name: "rig-core".to_string(),
             version: "0.13.0".to_string(),
+            title: "clent",
+            icons: "clents",
+            website_url: "cmp",
         },
     };
 

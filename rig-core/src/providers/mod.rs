@@ -45,22 +45,12 @@
 //! ```
 //! Note: The example above uses the OpenAI provider client, but the same pattern can
 //! be used with the Cohere provider client.
-pub mod anthropic;
-pub mod azure;
+
+use serde::{ser::SerializeSeq, Deserialize};
+
+use crate::completion::CompletionError;
 pub mod cohere;
-pub mod deepseek;
-pub mod galadriel;
 pub mod gemini;
-pub mod groq;
 pub mod huggingface;
-pub mod hyperbolic;
-pub mod mira;
-pub mod mistral;
-pub mod moonshot;
-pub mod ollama;
 pub mod openai;
-pub mod openrouter;
-pub mod perplexity;
-pub mod together;
-pub mod voyageai;
-pub mod xai;
+

@@ -211,8 +211,3 @@ impl VerifyClient for Client {
     }
 }
 
-impl_conversion_traits!(
-    AsTranscription,
-    AsImageGeneration,
-    AsAudioGeneration for Client
-);

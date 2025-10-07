@@ -123,7 +123,7 @@ where
 {
     pub fn stream(inner: StreamingResult<R>) -> StreamingCompletionResponse<R> {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
-        let abortable_stream = Abortable::new(inner, abort_registration);
+        let abortable_stream= Abortable::new(inner, abort_registration);
         let pause_control = PauseControl::new();
         Self {
             inner: abortable_stream,

@@ -1,26 +1,15 @@
-#[cfg(feature = "audio")]
-use super::audio_generation::AudioGenerationModel;
 use super::embedding::{
     EmbeddingModel, TEXT_EMBEDDING_3_LARGE, TEXT_EMBEDDING_3_SMALL, TEXT_EMBEDDING_ADA_002,
 };
 
-#[cfg(feature = "image")]
-use super::image_generation::ImageGenerationModel;
-use super::transcription::TranscriptionModel;
-
 use crate::{
     client::{
-        ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient,
-        TranscriptionClient, VerifyClient, VerifyError,
+        ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient, VerifyClient,
+        VerifyError,
     },
     extractor::ExtractorBuilder,
     providers::openai::CompletionModel,
 };
-
-#[cfg(feature = "audio")]
-use crate::client::AudioGenerationClient;
-#[cfg(feature = "image")]
-use crate::client::ImageGenerationClient;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -188,62 +177,6 @@ impl EmbeddingsClient for Client {
     }
 }
 
-impl TranscriptionClient for Client {
-    type TranscriptionModel = TranscriptionModel;
-    /// Create a transcription model with the given name.
-    ///
-    /// # Example
-    /// ```
-    /// use rig::providers::openai::{Client, self};
-    ///
-    /// // Initialize the OpenAI client
-    /// let openai = Client::new("your-open-ai-api-key");
-    ///
-    /// let gpt4 = openai.transcription_model(openai::WHISPER_1);
-    /// ```
-    fn transcription_model(&self, model: &str) -> TranscriptionModel {
-        TranscriptionModel::new(self.clone(), model)
-    }
-}
-
-#[cfg(feature = "image")]
-impl ImageGenerationClient for Client {
-    type ImageGenerationModel = ImageGenerationModel;
-    /// Create an image generation model with the given name.
-    ///
-    /// # Example
-    /// ```
-    /// use rig::providers::openai::{Client, self};
-    ///
-    /// // Initialize the OpenAI client
-    /// let openai = Client::new("your-open-ai-api-key");
-    ///
-    /// let gpt4 = openai.image_generation_model(openai::DALL_E_3);
-    /// ```
-    fn image_generation_model(&self, model: &str) -> Self::ImageGenerationModel {
-        ImageGenerationModel::new(self.clone(), model)
-    }
-}
-
-#[cfg(feature = "audio")]
-impl AudioGenerationClient for Client {
-    type AudioGenerationModel = AudioGenerationModel;
-    /// Create an audio generation model with the given name.
-    ///
-    /// # Example
-    /// ```
-    /// use rig::providers::openai::{Client, self};
-    ///
-    /// // Initialize the OpenAI client
-    /// let openai = Client::new("your-open-ai-api-key");
-    ///
-    /// let gpt4 = openai.audio_generation_model(openai::TTS_1);
-    /// ```
-    fn audio_generation_model(&self, model: &str) -> Self::AudioGenerationModel {
-        AudioGenerationModel::new(self.clone(), model)
-    }
-}
-
 impl VerifyClient for Client {
     #[cfg_attr(feature = "worker", worker::send)]
     async fn verify(&self) -> Result<(), VerifyError> {
@@ -276,9 +209,8 @@ pub(crate) enum ApiResponse<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::message::ImageDetail;
     use crate::providers::openai::{
-        AssistantContent, Function, ImageUrl, Message, ToolCall, ToolType, UserContent,
+        AssistantContent, Function, Message, ToolCall, ToolType, UserContent,
     };
     use crate::{OneOrMany, message};
     use serde_path_to_error::deserialize;
@@ -453,23 +385,6 @@ mod tests {
                 );
             }
             _ => panic!("Expected assistant message"),
-        }
-
-        match user_message {
-            Message::User { content, .. } => {
-                let (first, second) = {
-                    let mut iter = content.into_iter();
-                    (iter.next().unwrap(), iter.next().unwrap())
-                };
-                assert_eq!(
-                    first,
-                    UserContent::Text {
-                        text: "What's in this image?".to_string()
-                    }
-                );
-                assert_eq!(second, UserContent::Image { image_url: ImageUrl { url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg".to_string(), detail: ImageDetail::default() } });
-            }
-            _ => panic!("Expected user message"),
         }
     }
 

@@ -1,14 +1,10 @@
 use crate::agent::Agent;
 use crate::client::ProviderClient;
+use crate::completion::CompletionModelDyn;
 use crate::completion::{CompletionRequest, Message};
 use crate::embeddings::embedding::EmbeddingModelDyn;
-use crate::providers::{
-    anthropic, azure, cohere, deepseek, galadriel, gemini, groq, huggingface, hyperbolic, mira,
-    moonshot, ollama, openai, openrouter, perplexity, together, xai,
-};
+use crate::providers::{cohere,  gemini, huggingface,  openai};
 use crate::streaming::StreamingCompletionResponse;
-use crate::transcription::TranscriptionModelDyn;
-use rig::completion::CompletionModelDyn;
 use std::collections::HashMap;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use thiserror::Error;
@@ -29,7 +25,6 @@ pub type BoxCompletionModel<'a> = Box<dyn CompletionModelDyn + 'a>;
 pub type BoxAgentBuilder<'a> = AgentBuilder<CompletionModelHandle<'a>>;
 pub type BoxAgent<'a> = Agent<CompletionModelHandle<'a>>;
 pub type BoxEmbeddingModel<'a> = Box<dyn EmbeddingModelDyn + 'a>;
-pub type BoxTranscriptionModel<'a> = Box<dyn TranscriptionModelDyn + 'a>;
 
 /// A dynamic client builder.
 /// Use this when you need to support creating any kind of client from a range of LLM providers (that Rig supports).
@@ -78,11 +73,7 @@ impl<'a> DynClientBuilder {
             registry: HashMap::new(),
         }
         .register_all(vec![
-            ClientFactory::new(
-                DefaultProviders::ANTHROPIC,
-                anthropic::Client::from_env_boxed,
-                anthropic::Client::from_val_boxed,
-            ),
+     
             ClientFactory::new(
                 DefaultProviders::COHERE,
                 cohere::Client::from_env_boxed,
@@ -103,71 +94,12 @@ impl<'a> DynClientBuilder {
                 openai::Client::from_env_boxed,
                 openai::Client::from_val_boxed,
             ),
-            ClientFactory::new(
-                DefaultProviders::OPENROUTER,
-                openrouter::Client::from_env_boxed,
-                openrouter::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::TOGETHER,
-                together::Client::from_env_boxed,
-                together::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::XAI,
-                xai::Client::from_env_boxed,
-                xai::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::AZURE,
-                azure::Client::from_env_boxed,
-                azure::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::DEEPSEEK,
-                deepseek::Client::from_env_boxed,
-                deepseek::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::GALADRIEL,
-                galadriel::Client::from_env_boxed,
-                galadriel::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::GROQ,
-                groq::Client::from_env_boxed,
-                groq::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::HYPERBOLIC,
-                hyperbolic::Client::from_env_boxed,
-                hyperbolic::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::MOONSHOT,
-                moonshot::Client::from_env_boxed,
-                moonshot::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::MIRA,
-                mira::Client::from_env_boxed,
-                mira::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::MISTRAL,
-                mistral::Client::from_env_boxed,
-                mistral::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::OLLAMA,
-                ollama::Client::from_env_boxed,
-                ollama::Client::from_val_boxed,
-            ),
-            ClientFactory::new(
-                DefaultProviders::PERPLEXITY,
-                perplexity::Client::from_env_boxed,
-                perplexity::Client::from_val_boxed,
-            ),
+
+            // ClientFactory::new(
+            //     DefaultProviders::DEEPSEEK,
+            //     deepseek::client::Client::from_env_boxed,
+            //     deepseek::client::Client::from_val_boxed,
+            // ),
         ])
     }
 
@@ -325,46 +257,6 @@ impl<'a> DynClientBuilder {
         Ok(embeddings.embedding_model(model))
     }
 
-    /// Get a boxed transcription model based on the provider and model.
-    pub fn transcription(
-        &self,
-        provider: &str,
-        model: &str,
-    ) -> Result<Box<dyn TranscriptionModelDyn + 'a>, ClientBuildError> {
-        let client = self.build(provider)?;
-        let transcription =
-            client
-                .as_transcription()
-                .ok_or(ClientBuildError::UnsupportedFeature(
-                    provider.to_string(),
-                    "transcription".to_owned(),
-                ))?;
-
-        Ok(transcription.transcription_model(model))
-    }
-
-    /// Get a boxed transcription model based on the provider and model.
-    pub fn transcription_with_api_key_val<P>(
-        &self,
-        provider: &str,
-        model: &str,
-        provider_value: P,
-    ) -> Result<Box<dyn TranscriptionModelDyn + 'a>, ClientBuildError>
-    where
-        P: Into<ProviderValue>,
-    {
-        let client = self.build_val(provider, provider_value.into())?;
-        let transcription =
-            client
-                .as_transcription()
-                .ok_or(ClientBuildError::UnsupportedFeature(
-                    provider.to_string(),
-                    "transcription".to_owned(),
-                ))?;
-
-        Ok(transcription.transcription_model(model))
-    }
-
     /// Get the ID of a provider model based on a `provider:model` ID.
     pub fn id<'id>(&'a self, id: &'id str) -> Result<ProviderModelId<'a, 'id>, ClientBuildError> {
         let (provider, model) = self.parse(id)?;
@@ -514,10 +406,6 @@ impl<'builder> ProviderModelId<'builder, '_> {
         self.builder.embeddings(self.provider, self.model)
     }
 
-    pub fn transcription(self) -> Result<BoxTranscriptionModel<'builder>, ClientBuildError> {
-        self.builder.transcription(self.provider, self.model)
-    }
-
     /// Stream a completion request using this provider and model.
     ///
     /// # Arguments
@@ -569,84 +457,8 @@ impl<'builder> ProviderModelId<'builder, '_> {
     }
 }
 
-#[cfg(feature = "image")]
-mod image {
-    use crate::client::builder::ClientBuildError;
-    use crate::image_generation::ImageGenerationModelDyn;
-    use rig::client::builder::{DynClientBuilder, ProviderModelId};
-
-    pub type BoxImageGenerationModel<'a> = Box<dyn ImageGenerationModelDyn + 'a>;
-
-    impl DynClientBuilder {
-        pub fn image_generation<'a>(
-            &self,
-            provider: &str,
-            model: &str,
-        ) -> Result<BoxImageGenerationModel<'a>, ClientBuildError> {
-            let client = self.build(provider)?;
-            let image =
-                client
-                    .as_image_generation()
-                    .ok_or(ClientBuildError::UnsupportedFeature(
-                        provider.to_string(),
-                        "image_generation".to_string(),
-                    ))?;
-
-            Ok(image.image_generation_model(model))
-        }
-    }
-
-    impl<'builder> ProviderModelId<'builder, '_> {
-        pub fn image_generation(
-            self,
-        ) -> Result<Box<dyn ImageGenerationModelDyn + 'builder>, ClientBuildError> {
-            self.builder.image_generation(self.provider, self.model)
-        }
-    }
-}
-#[cfg(feature = "image")]
-pub use image::*;
-
-#[cfg(feature = "audio")]
-mod audio {
-    use crate::audio_generation::AudioGenerationModelDyn;
-    use crate::client::builder::DynClientBuilder;
-    use crate::client::builder::{ClientBuildError, ProviderModelId};
-
-    pub type BoxAudioGenerationModel<'a> = Box<dyn AudioGenerationModelDyn + 'a>;
-
-    impl DynClientBuilder {
-        pub fn audio_generation<'a>(
-            &self,
-            provider: &str,
-            model: &str,
-        ) -> Result<BoxAudioGenerationModel<'a>, ClientBuildError> {
-            let client = self.build(provider)?;
-            let audio =
-                client
-                    .as_audio_generation()
-                    .ok_or(ClientBuildError::UnsupportedFeature(
-                        provider.to_string(),
-                        "audio_generation".to_owned(),
-                    ))?;
-
-            Ok(audio.audio_generation_model(model))
-        }
-    }
-
-    impl<'builder> ProviderModelId<'builder, '_> {
-        pub fn audio_generation(
-            self,
-        ) -> Result<Box<dyn AudioGenerationModelDyn + 'builder>, ClientBuildError> {
-            self.builder.audio_generation(self.provider, self.model)
-        }
-    }
-}
 use crate::agent::AgentBuilder;
 use crate::client::completion::CompletionModelHandle;
-#[cfg(feature = "audio")]
-pub use audio::*;
-use rig::providers::mistral;
 
 use super::ProviderValue;
 

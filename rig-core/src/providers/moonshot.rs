@@ -176,10 +176,7 @@ impl VerifyClient for Client {
 }
 
 impl_conversion_traits!(
-    AsEmbeddings,
-    AsTranscription,
-    AsImageGeneration,
-    AsAudioGeneration for Client
+    AsEmbeddings for Client
 );
 
 #[derive(Debug, Deserialize)]

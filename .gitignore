@@ -12,3 +12,7 @@ target/
 # nodejs stuff
 node_modules/
 dist/
+.history/
+.vscode/
+Cargo.lock
+

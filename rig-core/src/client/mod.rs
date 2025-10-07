@@ -2,12 +2,9 @@
 //! Clients are used to create models for completion, embeddings, etc.
 //! Dyn-compatible traits have been provided to allow for more provider-agnostic code.
 
-pub mod audio_generation;
 pub mod builder;
 pub mod completion;
 pub mod embeddings;
-pub mod image_generation;
-pub mod transcription;
 pub mod verify;
 
 #[cfg(feature = "derive")]
@@ -33,9 +30,7 @@ pub enum ClientBuilderError {
 ///
 /// All conversion traits must be implemented, they are automatically
 /// implemented if the respective client trait is implemented.
-pub trait ProviderClient:
-    AsCompletion + AsTranscription + AsEmbeddings + AsImageGeneration + AsAudioGeneration + Debug
-{
+pub trait ProviderClient: AsCompletion + AsEmbeddings + Debug {
     /// Create a client from the process's environment.
     /// Panics if an environment is improperly configured.
     fn from_env() -> Self
@@ -126,32 +121,9 @@ pub trait AsCompletion {
     }
 }
 
-/// Attempt to convert a ProviderClient to a TranscriptionClient
-pub trait AsTranscription {
-    fn as_transcription(&self) -> Option<Box<dyn TranscriptionClientDyn>> {
-        None
-    }
-}
-
 /// Attempt to convert a ProviderClient to a EmbeddingsClient
 pub trait AsEmbeddings {
     fn as_embeddings(&self) -> Option<Box<dyn EmbeddingsClientDyn>> {
-        None
-    }
-}
-
-/// Attempt to convert a ProviderClient to a AudioGenerationClient
-pub trait AsAudioGeneration {
-    #[cfg(feature = "audio")]
-    fn as_audio_generation(&self) -> Option<Box<dyn AudioGenerationClientDyn>> {
-        None
-    }
-}
-
-/// Attempt to convert a ProviderClient to a ImageGenerationClient
-pub trait AsImageGeneration {
-    #[cfg(feature = "image")]
-    fn as_image_generation(&self) -> Option<Box<dyn ImageGenerationClientDyn>> {
         None
     }
 }
@@ -162,12 +134,6 @@ pub trait AsVerify {
         None
     }
 }
-
-#[cfg(not(feature = "audio"))]
-impl<T: ProviderClient> AsAudioGeneration for T {}
-
-#[cfg(not(feature = "image"))]
-impl<T: ProviderClient> AsImageGeneration for T {}
 
 /// Implements the conversion traits for a given struct
 /// ```rust
@@ -185,67 +151,19 @@ macro_rules! impl_conversion_traits {
         )*
     };
 
-    (@impl AsAudioGeneration for $struct_:ident ) => {
-        rig::client::impl_audio_generation!($struct_);
-    };
-
-    (@impl AsImageGeneration for $struct_:ident ) => {
-        rig::client::impl_image_generation!($struct_);
-    };
 
     (@impl $trait_:ident for $struct_:ident) => {
         impl rig::client::$trait_ for $struct_ {}
     };
 }
-
-#[cfg(feature = "audio")]
-#[macro_export]
-macro_rules! impl_audio_generation {
-    ($struct_:ident) => {
-        impl rig::client::AsAudioGeneration for $struct_ {}
-    };
-}
-
-#[cfg(not(feature = "audio"))]
-#[macro_export]
-macro_rules! impl_audio_generation {
-    ($struct_:ident) => {};
-}
-
-#[cfg(feature = "image")]
-#[macro_export]
-macro_rules! impl_image_generation {
-    ($struct_:ident) => {
-        impl rig::client::AsImageGeneration for $struct_ {}
-    };
-}
-
-#[cfg(not(feature = "image"))]
-#[macro_export]
-macro_rules! impl_image_generation {
-    ($struct_:ident) => {};
-}
-
-pub use impl_audio_generation;
 pub use impl_conversion_traits;
-pub use impl_image_generation;
 
-#[cfg(feature = "audio")]
-use crate::client::audio_generation::AudioGenerationClientDyn;
 use crate::client::completion::CompletionClientDyn;
 use crate::client::embeddings::EmbeddingsClientDyn;
-#[cfg(feature = "image")]
-use crate::client::image_generation::ImageGenerationClientDyn;
-use crate::client::transcription::TranscriptionClientDyn;
 use crate::client::verify::VerifyClientDyn;
 
-#[cfg(feature = "audio")]
-pub use crate::client::audio_generation::AudioGenerationClient;
 pub use crate::client::completion::CompletionClient;
 pub use crate::client::embeddings::EmbeddingsClient;
-#[cfg(feature = "image")]
-pub use crate::client::image_generation::ImageGenerationClient;
-pub use crate::client::transcription::TranscriptionClient;
 pub use crate::client::verify::{VerifyClient, VerifyError};
 
 #[cfg(test)]
@@ -253,22 +171,14 @@ mod tests {
     use crate::OneOrMany;
     use crate::client::ProviderClient;
     use crate::completion::{Completion, CompletionRequest, ToolDefinition};
-    use crate::image_generation::ImageGenerationRequest;
     use crate::message::AssistantContent;
-    use crate::providers::{
-        anthropic, azure, cohere, deepseek, galadriel, gemini, huggingface, hyperbolic, mira,
-        moonshot, openai, openrouter, together, xai,
-    };
+    use crate::providers::{cohere, gemini, huggingface, openai};
     use crate::streaming::StreamingCompletion;
     use crate::tool::Tool;
-    use crate::transcription::TranscriptionRequest;
     use futures::StreamExt;
     use rig::message::Message;
-    use rig::providers::{groq, ollama, perplexity};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
-    use std::fs::File;
-    use std::io::Read;
 
     use super::ProviderValue;
 
@@ -281,9 +191,6 @@ mod tests {
         env_variable: &'static str,
         completion_model: Option<&'static str>,
         embeddings_model: Option<&'static str>,
-        transcription_model: Option<&'static str>,
-        image_generation_model: Option<&'static str>,
-        audio_generation_model: Option<(&'static str, &'static str)>,
     }
 
     impl Default for ClientConfig {
@@ -295,9 +202,6 @@ mod tests {
                 env_variable: "",
                 completion_model: None,
                 embeddings_model: None,
-                transcription_model: None,
-                image_generation_model: None,
-                audio_generation_model: None,
             }
         }
     }
@@ -315,14 +219,6 @@ mod tests {
     fn providers() -> Vec<ClientConfig> {
         vec![
             ClientConfig {
-                name: "Anthropic",
-                factory_env: Box::new(anthropic::Client::from_env_boxed),
-                factory_val: Box::new(anthropic::Client::from_val_boxed),
-                env_variable: "ANTHROPIC_API_KEY",
-                completion_model: Some(anthropic::CLAUDE_3_5_SONNET),
-                ..Default::default()
-            },
-            ClientConfig {
                 name: "Cohere",
                 factory_env: Box::new(cohere::Client::from_env_boxed),
                 factory_val: Box::new(cohere::Client::from_val_boxed),
@@ -338,7 +234,6 @@ mod tests {
                 env_variable: "GEMINI_API_KEY",
                 completion_model: Some(gemini::completion::GEMINI_2_0_FLASH),
                 embeddings_model: Some(gemini::embedding::EMBEDDING_001),
-                transcription_model: Some(gemini::transcription::GEMINI_2_0_FLASH),
                 ..Default::default()
             },
             ClientConfig {
@@ -347,8 +242,6 @@ mod tests {
                 factory_val: Box::new(huggingface::Client::from_val_boxed),
                 env_variable: "HUGGINGFACE_API_KEY",
                 completion_model: Some(huggingface::PHI_4),
-                transcription_model: Some(huggingface::WHISPER_SMALL),
-                image_generation_model: Some(huggingface::STABLE_DIFFUSION_3),
                 ..Default::default()
             },
             ClientConfig {
@@ -358,115 +251,17 @@ mod tests {
                 env_variable: "OPENAI_API_KEY",
                 completion_model: Some(openai::GPT_4O),
                 embeddings_model: Some(openai::TEXT_EMBEDDING_ADA_002),
-                transcription_model: Some(openai::WHISPER_1),
-                image_generation_model: Some(openai::DALL_E_2),
-                audio_generation_model: Some((openai::TTS_1, "onyx")),
-            },
-            ClientConfig {
-                name: "OpenRouter",
-                factory_env: Box::new(openrouter::Client::from_env_boxed),
-                factory_val: Box::new(openrouter::Client::from_val_boxed),
-                env_variable: "OPENROUTER_API_KEY",
-                completion_model: Some(openrouter::CLAUDE_3_7_SONNET),
                 ..Default::default()
             },
-            ClientConfig {
-                name: "Together",
-                factory_env: Box::new(together::Client::from_env_boxed),
-                factory_val: Box::new(together::Client::from_val_boxed),
-                env_variable: "TOGETHER_API_KEY",
-                completion_model: Some(together::ALPACA_7B),
-                embeddings_model: Some(together::BERT_BASE_UNCASED),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "XAI",
-                factory_env: Box::new(xai::Client::from_env_boxed),
-                factory_val: Box::new(xai::Client::from_val_boxed),
-                env_variable: "XAI_API_KEY",
-                completion_model: Some(xai::GROK_3_MINI),
-                embeddings_model: None,
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Azure",
-                factory_env: Box::new(azure::Client::from_env_boxed),
-                factory_val: Box::new(azure::Client::from_val_boxed),
-                env_variable: "AZURE_API_KEY",
-                completion_model: Some(azure::GPT_4O),
-                embeddings_model: Some(azure::TEXT_EMBEDDING_ADA_002),
-                transcription_model: Some("whisper-1"),
-                image_generation_model: Some("dalle-2"),
-                audio_generation_model: Some(("tts-1", "onyx")),
-            },
-            ClientConfig {
-                name: "Deepseek",
-                factory_env: Box::new(deepseek::Client::from_env_boxed),
-                factory_val: Box::new(deepseek::Client::from_val_boxed),
-                env_variable: "DEEPSEEK_API_KEY",
-                completion_model: Some(deepseek::DEEPSEEK_CHAT),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Galadriel",
-                factory_env: Box::new(galadriel::Client::from_env_boxed),
-                factory_val: Box::new(galadriel::Client::from_val_boxed),
-                env_variable: "GALADRIEL_API_KEY",
-                completion_model: Some(galadriel::GPT_4O),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Groq",
-                factory_env: Box::new(groq::Client::from_env_boxed),
-                factory_val: Box::new(groq::Client::from_val_boxed),
-                env_variable: "GROQ_API_KEY",
-                completion_model: Some(groq::MIXTRAL_8X7B_32768),
-                transcription_model: Some(groq::DISTIL_WHISPER_LARGE_V3),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Hyperbolic",
-                factory_env: Box::new(hyperbolic::Client::from_env_boxed),
-                factory_val: Box::new(hyperbolic::Client::from_val_boxed),
-                env_variable: "HYPERBOLIC_API_KEY",
-                completion_model: Some(hyperbolic::LLAMA_3_1_8B),
-                image_generation_model: Some(hyperbolic::SD1_5),
-                audio_generation_model: Some(("EN", "EN-US")),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Mira",
-                factory_env: Box::new(mira::Client::from_env_boxed),
-                factory_val: Box::new(mira::Client::from_val_boxed),
-                env_variable: "MIRA_API_KEY",
-                completion_model: Some("gpt-4o"),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Moonshot",
-                factory_env: Box::new(moonshot::Client::from_env_boxed),
-                factory_val: Box::new(moonshot::Client::from_val_boxed),
-                env_variable: "MOONSHOT_API_KEY",
-                completion_model: Some(moonshot::MOONSHOT_CHAT),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Ollama",
-                factory_env: Box::new(ollama::Client::from_env_boxed),
-                factory_val: Box::new(ollama::Client::from_val_boxed),
-                env_variable: "OLLAMA_ENABLED",
-                completion_model: Some("llama3.1:8b"),
-                embeddings_model: Some(ollama::NOMIC_EMBED_TEXT),
-                ..Default::default()
-            },
-            ClientConfig {
-                name: "Perplexity",
-                factory_env: Box::new(perplexity::Client::from_env_boxed),
-                factory_val: Box::new(perplexity::Client::from_val_boxed),
-                env_variable: "PERPLEXITY_API_KEY",
-                completion_model: Some(perplexity::SONAR),
-                ..Default::default()
-            },
+            // ClientConfig {
+            //     name: "Deepseek",
+            //     factory_env: Box::new(deepseek::client::Client::from_env_boxed),
+            //     factory_val: Box::new(deepseek::client::Client::from_val_boxed),
+            //     env_variable: "DEEPSEEK_API_KEY",
+            //     completion_model: Some(deepseek::completion::DEEPSEEK_CHAT),
+            //     ..Default::default()
+            // },
+ 
         ]
     }
 
@@ -724,50 +519,6 @@ mod tests {
         }
     }
 
-    async fn test_audio_generation_client(config: &ClientConfig) {
-        let client = config.factory_env();
-
-        let Some(client) = client.as_audio_generation() else {
-            return;
-        };
-
-        let (model, voice) = config
-            .audio_generation_model
-            .unwrap_or_else(|| panic!("{} doesn't have the model set", config.name));
-
-        let model = client.audio_generation_model(model);
-
-        let request = model
-            .audio_generation_request()
-            .text("Hello world!")
-            .voice(voice);
-
-        let resp = request.send().await;
-
-        assert!(
-            resp.is_ok(),
-            "[{}]: Error occurred when sending request, {}",
-            config.name,
-            resp.err().unwrap()
-        );
-
-        let resp = resp.unwrap();
-
-        assert!(
-            !resp.audio.is_empty(),
-            "[{}]: Returned audio was empty",
-            config.name
-        );
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_audio_generation() {
-        for p in providers().into_iter().filter(ClientConfig::is_env_var_set) {
-            test_audio_generation_client(&p).await;
-        }
-    }
-
     fn assert_feature<F, M>(
         name: &str,
         feature_name: &str,
@@ -807,30 +558,6 @@ mod tests {
                 client.as_embeddings(),
                 config.embeddings_model,
             );
-
-            assert_feature(
-                config.name,
-                "AsTranscription",
-                "transcription_model",
-                client.as_transcription(),
-                config.transcription_model,
-            );
-
-            assert_feature(
-                config.name,
-                "AsImageGeneration",
-                "image_generation_model",
-                client.as_image_generation(),
-                config.image_generation_model,
-            );
-
-            assert_feature(
-                config.name,
-                "AsAudioGeneration",
-                "audio_generation_model",
-                client.as_audio_generation(),
-                config.audio_generation_model,
-            )
         }
     }
 
@@ -872,99 +599,6 @@ mod tests {
     async fn test_embed() {
         for config in providers().into_iter().filter(ClientConfig::is_env_var_set) {
             test_embed_client(&config).await;
-        }
-    }
-
-    async fn test_image_generation_client(config: &ClientConfig) {
-        let client = config.factory_env();
-        let Some(client) = client.as_image_generation() else {
-            return;
-        };
-
-        let model = config.image_generation_model.unwrap();
-
-        let model = client.image_generation_model(model);
-
-        let resp = model
-            .image_generation(ImageGenerationRequest {
-                prompt: "A castle sitting on a large hill.".to_string(),
-                width: 256,
-                height: 256,
-                additional_params: None,
-            })
-            .await;
-
-        assert!(
-            resp.is_ok(),
-            "[{}]: Error occurred when sending request, {}",
-            config.name,
-            resp.err().unwrap()
-        );
-
-        let resp = resp.unwrap();
-
-        assert!(
-            !resp.image.is_empty(),
-            "[{}]: Generated image was empty",
-            config.name
-        );
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_image_generation() {
-        for config in providers().into_iter().filter(ClientConfig::is_env_var_set) {
-            test_image_generation_client(&config).await;
-        }
-    }
-
-    async fn test_transcription_client(config: &ClientConfig, data: Vec<u8>) {
-        let client = config.factory_env();
-        let Some(client) = client.as_transcription() else {
-            return;
-        };
-
-        let model = config.image_generation_model.unwrap();
-
-        let model = client.transcription_model(model);
-
-        let resp = model
-            .transcription(TranscriptionRequest {
-                data,
-                filename: "audio.mp3".to_string(),
-                language: "en".to_string(),
-                prompt: None,
-                temperature: None,
-                additional_params: None,
-            })
-            .await;
-
-        assert!(
-            resp.is_ok(),
-            "[{}]: Error occurred when sending request, {}",
-            config.name,
-            resp.err().unwrap()
-        );
-
-        let resp = resp.unwrap();
-
-        assert!(
-            !resp.text.is_empty(),
-            "[{}]: Returned transcription was empty",
-            config.name
-        );
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_transcription() {
-        let mut file = File::open("examples/audio/en-us-natural-speech.mp3").unwrap();
-
-        let mut data = Vec::new();
-        let _ = file.read(&mut data);
-
-        for config in providers().into_iter().filter(ClientConfig::is_env_var_set) {
-            test_transcription_client(&config, data.clone()).await;
         }
     }
 

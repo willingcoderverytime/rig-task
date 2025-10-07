@@ -1,9 +1,7 @@
-use super::{
-    completion::CompletionModel, embedding::EmbeddingModel, transcription::TranscriptionModel,
-};
+use super::{completion::CompletionModel, embedding::EmbeddingModel};
 use crate::client::{
-    ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient,
-    VerifyClient, VerifyError, impl_conversion_traits,
+    ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient, VerifyClient,
+    VerifyError,
 };
 use crate::{
     Embed,
@@ -222,17 +220,6 @@ impl EmbeddingsClient for Client {
     }
 }
 
-impl TranscriptionClient for Client {
-    type TranscriptionModel = TranscriptionModel;
-
-    /// Create a transcription model with the given name.
-    /// Gemini-specific parameters can be set using the [GenerationConfig](crate::providers::gemini::completion::gemini_api_types::GenerationConfig) struct.
-    /// [Gemini API Reference](https://ai.google.dev/api/generate-content#generationconfig)
-    fn transcription_model(&self, model: &str) -> TranscriptionModel {
-        TranscriptionModel::new(self.clone(), model)
-    }
-}
-
 impl VerifyClient for Client {
     #[cfg_attr(feature = "worker", worker::send)]
     async fn verify(&self) -> Result<(), VerifyError> {
@@ -251,11 +238,6 @@ impl VerifyClient for Client {
         }
     }
 }
-
-impl_conversion_traits!(
-    AsImageGeneration,
-    AsAudioGeneration for Client
-);
 
 #[derive(Debug, Deserialize)]
 pub struct ApiErrorResponse {

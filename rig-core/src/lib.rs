@@ -115,10 +115,7 @@ pub mod client;
 pub mod completion;
 pub mod embeddings;
 pub mod extractor;
-#[cfg(feature = "image")]
-#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-pub mod image_generation;
-pub(crate) mod json_utils;
+pub mod json_utils;
 pub mod loaders;
 pub mod one_or_many;
 pub mod pipeline;
@@ -127,7 +124,6 @@ pub mod providers;
 pub mod streaming;
 pub mod tool;
 pub mod tools;
-pub mod transcription;
 pub mod vector_store;
 
 // Re-export commonly used types and traits

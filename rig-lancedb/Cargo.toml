@@ -10,7 +10,7 @@ repository = "https://github.com/0xPlaygrounds/rig"
 [dependencies]
 lancedb = { workspace = true }
 rig-core = { path = "../rig-core", version = "0.21.0" }
-arrow-array = { workspace = true }
+arrow-array = "55.2"
 serde_json = { workspace = true }
 serde = { workspace = true }
 futures = { workspace = true }

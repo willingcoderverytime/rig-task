@@ -1,16 +1,10 @@
 use super::completion::CompletionModel;
-#[cfg(feature = "image")]
-use crate::client::ImageGenerationClient;
 use crate::client::{
-    ClientBuilderError, CompletionClient, ProviderClient, TranscriptionClient, VerifyClient,
+    ClientBuilderError, CompletionClient, ProviderClient, VerifyClient,
     VerifyError,
 };
-#[cfg(feature = "image")]
-use crate::image_generation::ImageGenerationError;
-#[cfg(feature = "image")]
-use crate::providers::huggingface::image_generation::ImageGenerationModel;
-use crate::providers::huggingface::transcription::TranscriptionModel;
-use crate::transcription::TranscriptionError;
+
+
 use rig::client::impl_conversion_traits;
 use std::fmt::Display;
 
@@ -43,30 +37,6 @@ impl SubProvider {
         }
     }
 
-    /// Get the transcription endpoint for the SubProvider
-    /// Required because Huggingface Inference requires the model
-    /// in the url and in the request body.
-    pub fn transcription_endpoint(&self, model: &str) -> Result<String, TranscriptionError> {
-        match self {
-            SubProvider::HFInference => Ok(format!("/{model}")),
-            _ => Err(TranscriptionError::ProviderError(format!(
-                "transcription endpoint is not supported yet for {self}"
-            ))),
-        }
-    }
-
-    /// Get the image generation endpoint for the SubProvider
-    /// Required because Huggingface Inference requires the model
-    /// in the url and in the request body.
-    #[cfg(feature = "image")]
-    pub fn image_generation_endpoint(&self, model: &str) -> Result<String, ImageGenerationError> {
-        match self {
-            SubProvider::HFInference => Ok(format!("/{model}")),
-            _ => Err(ImageGenerationError::ProviderError(format!(
-                "image generation endpoint is not supported yet for {self}"
-            ))),
-        }
-    }
 
     pub fn model_identifier(&self, model: &str) -> String {
         match self {
@@ -262,45 +232,6 @@ impl CompletionClient for Client {
     }
 }
 
-impl TranscriptionClient for Client {
-    type TranscriptionModel = TranscriptionModel;
-
-    /// Create a new transcription model with the given name
-    ///
-    /// # Example
-    /// ```
-    /// use rig::providers::huggingface::{Client, self}
-    ///
-    /// // Initialize the Huggingface client
-    /// let client = Client::new("your-huggingface-api-key");
-    ///
-    /// let completion_model = client.transcription_model(huggingface::WHISPER_LARGE_V3);
-    /// ```
-    ///
-    fn transcription_model(&self, model: &str) -> TranscriptionModel {
-        TranscriptionModel::new(self.clone(), model)
-    }
-}
-
-#[cfg(feature = "image")]
-impl ImageGenerationClient for Client {
-    type ImageGenerationModel = ImageGenerationModel;
-
-    /// Create a new image generation model with the given name
-    ///
-    /// # Example
-    /// ```
-    /// use rig::providers::huggingface::{Client, self}
-    ///
-    /// // Initialize the Huggingface client
-    /// let client = Client::new("your-huggingface-api-key");
-    ///
-    /// let completion_model = client.image_generation_model(huggingface::WHISPER_LARGE_V3);
-    /// ```
-    fn image_generation_model(&self, model: &str) -> ImageGenerationModel {
-        ImageGenerationModel::new(self.clone(), model)
-    }
-}
 
 impl VerifyClient for Client {
     #[cfg_attr(feature = "worker", worker::send)]
@@ -320,4 +251,4 @@ impl VerifyClient for Client {
     }
 }
 
-impl_conversion_traits!(AsEmbeddings, AsAudioGeneration for Client);
+impl_conversion_traits!(AsEmbeddings for Client);
