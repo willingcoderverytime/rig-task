@@ -1,7 +1,7 @@
 // ---------- Provider Message Definition ----------
-use rig::agent::{self, Text};
+use rig::agent::Text;
 use rig::message::{
-    AssistantContent, Document, DocumentSourceKind, Message, MessageError, Reasoning, ToolCall,
+    AssistantContent, Document, DocumentSourceKind, Message, MessageError, Reasoning,
     ToolResult, ToolResultContent, UserContent,
 };
 use rig::{OneOrMany, json_utils, message};

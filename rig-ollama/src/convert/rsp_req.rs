@@ -7,13 +7,10 @@ use rig::{
     json_utils,
 };
 
-use crate::{
-    client::Client,
-    convert::{
+use crate::convert::{
         message::{OlMessage, RigMessage},
         tool::OlToolDefinition,
-    },
-};
+    };
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OllamaCompletionResponse {

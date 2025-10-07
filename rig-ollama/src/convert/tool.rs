@@ -1,10 +1,8 @@
 
-use rig::agent::{self, Text};
 use rig::completion::ToolDefinition;
 use rig::message::ToolCall;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::str::FromStr;
 
 
 

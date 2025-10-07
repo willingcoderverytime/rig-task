@@ -42,7 +42,7 @@ use rig::client::{
     ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient, VerifyClient,
     VerifyError,
 };
-use rig::embeddings::{EmbeddingModel, EmbeddingsBuilder};
+use rig::embeddings::EmbeddingsBuilder;
 
 use reqwest;
 use rig::Embed;
