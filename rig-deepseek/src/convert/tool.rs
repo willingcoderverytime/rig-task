@@ -10,7 +10,7 @@ use crate::convert::message::DsMessage;
 /// 选中工具展示，即选中工具特性。
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "function")]
-enum ToolChoiceFunctionKind {
+pub(crate) enum ToolChoiceFunctionKind {
     Function { name: String },
 }
 

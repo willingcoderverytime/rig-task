@@ -32,12 +32,15 @@ tracing-futures = { workspace = true, features = ["futures-03"] }
 futures = { workspace = true }
 thiserror = { workspace = true }
 reqwest-eventsource = { workspace = true }
-
+worker = { workspace = true, optional = true }
 [dev-dependencies]
 anyhow = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 tracing-subscriber = { workspace = true }
 
+[features]
+default = ["worker"]
+worker = ["dep:worker"]
 
 [[example]]
 name = "rag_ollama"

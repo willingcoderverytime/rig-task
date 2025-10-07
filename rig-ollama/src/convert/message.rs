@@ -1,14 +1,14 @@
 // ---------- Provider Message Definition ----------
 use rig::agent::Text;
 use rig::message::{
-    AssistantContent, Document, DocumentSourceKind, Message, MessageError, Reasoning,
-    ToolResult, ToolResultContent, UserContent,
+    AssistantContent, Document, DocumentSourceKind, Message, MessageError, Reasoning, ToolResult,
+    ToolResultContent, UserContent,
 };
 use rig::{OneOrMany, json_utils, message};
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "role", rename_all = "lowercase")]
-pub(crate) enum OlMessage {
+pub enum OlMessage {
     User {
         content: String,
         #[serde(skip_serializing_if = "Option::is_none")]
