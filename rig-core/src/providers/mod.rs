@@ -46,9 +46,7 @@
 //! Note: The example above uses the OpenAI provider client, but the same pattern can
 //! be used with the Cohere provider client.
 
-use serde::{ser::SerializeSeq, Deserialize};
 
-use crate::completion::CompletionError;
 pub mod cohere;
 pub mod gemini;
 pub mod huggingface;

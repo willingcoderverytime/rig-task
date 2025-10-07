@@ -6,7 +6,7 @@ use crate::{
 
 use super::{CompletionModel, EmbeddingModel};
 use crate::client::{
-    ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient, impl_conversion_traits,
+    ClientBuilderError, CompletionClient, EmbeddingsClient, ProviderClient,
 };
 use serde::Deserialize;
 
