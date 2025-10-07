@@ -1,13 +1,8 @@
 use rig::json_utils::merge;
-use rig::{completion::GetTokenUsage, streaming::StreamingCompletionResponse};
+use rig::streaming::StreamingCompletionResponse;
 
-use reqwest_eventsource::{Event, RequestBuilderExt};
-use rig::{
-    completion::{self, CompletionError, CompletionRequest},
-    json_utils, message,
-};
+use rig::completion::{self, CompletionError, CompletionRequest};
 use serde_json::json;
-use std::collections::HashMap;
 use tracing::{Instrument, info_span};
 
 use crate::streaming::send_compatible_streaming_request;

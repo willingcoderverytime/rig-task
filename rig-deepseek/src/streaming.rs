@@ -1,28 +1,22 @@
 use std::collections::HashMap;
 
-use async_stream::{stream, try_stream};
+use async_stream::stream;
 use futures::StreamExt as _;
 use reqwest_eventsource::{Event, RequestBuilderExt as _};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use tracing::info_span;
-use tracing_futures::Instrument;
 
 use rig::{
-    completion::{CompletionError, CompletionRequest, GetTokenUsage, Usage},
+    completion::{CompletionError, GetTokenUsage, Usage},
     json_utils,
     providers::openai::StreamingToolCall,
     streaming::{RawStreamingChoice, StreamingCompletionResponse},
 };
 
-use crate::{
-    completion::DsCompletionModel,
-    convert::{
+use crate::convert::{
         message::DsMessage,
         rsp_req::{ DsUsage},
         tool::{DsFunction, DsToolCall, DsToolType},
-    },
-};
+    };
 
 /// ----------- streaming --------------------
 

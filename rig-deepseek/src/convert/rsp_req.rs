@@ -1,20 +1,17 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::json;
 
 use rig::{
     OneOrMany,
-    completion::{self, CompletionError, CompletionRequest, CompletionResponse, Usage},
+    completion::{CompletionError, CompletionRequest, CompletionResponse, Usage},
     json_utils,
     message::AssistantContent,
 };
 
-use crate::{
-    client::Client,
-    convert::{
+use crate::convert::{
         message::{DsMessage, RigMessage},
         tool::{DsToolChoice, DsToolDefinition},
-    },
-};
+    };
 
 /// The response 转化
 #[derive(Clone, Debug, Serialize, Deserialize)]

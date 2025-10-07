@@ -1,10 +1,8 @@
 // ---------- Provider Message Definition ----------
-use rig::agent::{self, Text};
 use rig::message::{
-    AssistantContent, Document, DocumentSourceKind, Message, MessageError, Reasoning, ToolCall,
-    ToolResult, ToolResultContent, UserContent,
+    Document, DocumentSourceKind,
 };
-use rig::{OneOrMany, json_utils, message};
+use rig::{json_utils, message};
 use serde::{Deserialize, Serialize};
 
 use crate::convert::tool::DsToolCall;

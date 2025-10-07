@@ -1,10 +1,7 @@
-use rig::agent::{self, Text};
 use rig::completion::{CompletionError, ToolDefinition};
 use rig::json_utils;
 use rig::message::{ToolCall, ToolChoice, ToolResult, ToolResultContent};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::str::FromStr;
 
 use crate::convert::message::DsMessage;
 
