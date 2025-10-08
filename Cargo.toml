@@ -2,10 +2,11 @@
 resolver = "3"
 members = [
     "rig-core",
-    "rig-lancedb",
+    "benben-task",
     "rig-core/rig-core-derive",
-    "rig-ollama",
-    "rig-deepseek",
+    "vector/rig-lancedb",
+    "provider/rig-ollama",
+    "provider/rig-deepseek",
 ]
 
 [profile.release]
@@ -47,7 +48,9 @@ mime_guess = "2.0.5"
 ordered-float = "5.0.0"
 pgvector = "0.4"
 proc-macro2 = "1.0.95"
-qdrant-client = { version = "1.14.0", default-features = false, features = ["serde"] }
+qdrant-client = { version = "1.14.0", default-features = false, features = [
+    "serde",
+] }
 quick-xml = "0.38.0"
 quote = "1.0.40"
 rayon = "1.10.0"

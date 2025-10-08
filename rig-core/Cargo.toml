@@ -94,29 +94,6 @@ reqwest-rustls = [
 name = "embed_macro"
 required-features = ["derive"]
 
-[[example]]
-name = "rag"
-required-features = ["derive"]
 
 
 
-[[example]]
-name = "vector_search"
-required-features = ["derive"]
-
-[[example]]
-name = "vector_search_cohere"
-required-features = ["derive"]
-
-
-[[example]]
-name = "pdf_agent"
-required-features = ["derive", "pdf"]
-
-
-[[example]]
-name = "rmcp"
-required-features = ["rmcp"]
-
-[[example]]
-name = "request_hook"

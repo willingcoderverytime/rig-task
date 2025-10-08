@@ -1098,6 +1098,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "benben-task"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "futures",
+ "reqwest",
+ "rig-core",
+ "rig_deepseek",
+ "rig_ollama",
+ "schemars 1.0.4",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bigdecimal"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5587,31 +5608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rig-deepseek"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "async-stream",
- "base64 0.22.1",
- "futures",
- "reqwest",
- "reqwest-eventsource",
- "rig-core",
- "rig-derive",
- "schemars 1.0.4",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
- "url",
- "uuid",
- "worker",
-]
-
-[[package]]
 name = "rig-derive"
 version = "0.1.6"
 dependencies = [
@@ -5621,6 +5617,8 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rig-core",
+ "rig_deepseek",
+ "rig_ollama",
  "serde",
  "serde_json",
  "syn 2.0.104",
@@ -5645,7 +5643,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "rig-ollama"
+name = "rig_deepseek"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "base64 0.22.1",
+ "futures",
+ "reqwest",
+ "reqwest-eventsource",
+ "rig-core",
+ "rig-derive",
+ "schemars 1.0.4",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "worker",
+]
+
+[[package]]
+name = "rig_ollama"
 version = "0.0.1"
 dependencies = [
  "anyhow",

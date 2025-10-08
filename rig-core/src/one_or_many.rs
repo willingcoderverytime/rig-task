@@ -102,7 +102,7 @@ impl<T: Clone> OneOrMany<T> {
     /// Since OneOrMany objects have *atleast* 1 item, using `.collect::<Vec<_>>()` and
     /// `OneOrMany::many()` is fallible resulting in unergonomic uses of `.expect` or `.unwrap`.
     /// This function bypasses those hurdles by directly constructing the `OneOrMany` struct.
-    pub(crate) fn map<U, F: FnMut(T) -> U>(self, mut op: F) -> OneOrMany<U> {
+    pub fn map<U, F: FnMut(T) -> U>(self, mut op: F) -> OneOrMany<U> {
         OneOrMany {
             first: op(self.first),
             rest: self.rest.into_iter().map(op).collect(),
@@ -112,7 +112,7 @@ impl<T: Clone> OneOrMany<T> {
     /// Specialized try map function for OneOrMany objects.
     ///
     /// Same as `OneOrMany::map` but fallible.
-    pub(crate) fn try_map<U, E, F>(self, mut op: F) -> Result<OneOrMany<U>, E>
+    pub fn try_map<U, E, F>(self, mut op: F) -> Result<OneOrMany<U>, E>
     where
         F: FnMut(T) -> Result<U, E>,
     {
