@@ -17,7 +17,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt().init();
 
     // Create DeepSeek client
-    let deepseek_client = rig_deepseek::client::Client::from_env();
+    let deepseek_client = rig_deepseek::client::Client::new("");
     
     // Create extractor
     let extractor = deepseek_client

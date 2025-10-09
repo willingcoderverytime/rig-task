@@ -141,28 +141,12 @@ impl Client {
 }
 
 impl ProviderClient for Client {
-    fn from_env() -> Self
+    fn from_config(config: rig::client::AgentConfig) -> Box<dyn ProviderClient>
     where
         Self: Sized,
     {
-        let api_base = std::env::var("OLLAMA_API_BASE_URL").expect("OLLAMA_API_BASE_URL not set");
-        Self::builder().base_url(&api_base).build().unwrap()
-    }
-
-    fn from_val(input: rig::client::ProviderValue) -> Self {
-        let rig::client::ProviderValue::Simple(_) = input else {
-            panic!("Incorrect provider value type")
-        };
-
-        Self::new()
-    }
-
-    fn name(self) -> String {
-        "Ollama".to_string()
-    }
-
-    fn api_key(self) -> Option<String> {
-       None
+        let api_base = config.base_url;
+        Box::new(Self::builder().base_url(&api_base).build().unwrap())
     }
 }
 

@@ -16,7 +16,7 @@ struct Person {
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     // Create DeepSeek client
-    let deepseek_client = rig_deepseek::client::Client::from_env();
+    let deepseek_client = rig_deepseek::client::Client::new("");
 
     // Create extractor
     let data_extractor = deepseek_client

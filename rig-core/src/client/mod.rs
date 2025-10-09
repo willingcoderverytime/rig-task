@@ -8,6 +8,7 @@ pub mod verify;
 
 #[cfg(feature = "derive")]
 pub use rig_derive::ProviderClient;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -24,6 +25,18 @@ pub enum ClientBuilderError {
     InvalidProperty(&'static str),
 }
 
+pub struct AgentConfig {
+    pub name: String,
+    pub model: String,
+    pub base_url: String,
+    pub sys_promte: Option<String>,
+    pub api_key: Option<String>,
+    pub auth_map: Option<HashMap<String, Option<String>>>,
+    pub mcp: Option<String>,
+    pub mcp_path: Option<String>,
+    pub mcp_map: Option<HashMap<String, Option<String>>>,
+}
+
 /// The base ProviderClient trait, facilitates conversion between client types
 /// and creating a client from the environment.
 ///
@@ -32,88 +45,9 @@ pub enum ClientBuilderError {
 pub trait ProviderClient: AsCompletion + AsEmbeddings + Debug {
     /// Create a client from the process's environment.
     /// Panics if an environment is improperly configured.
-    fn from_env() -> Self
+    fn from_config(config: AgentConfig) ->  Box<dyn ProviderClient>
     where
         Self: Sized;
-
-    fn name(self) -> String;
-
-    fn api_key(self) -> Option<String>;
-    /// A helper method to box the client.
-    fn boxed(self) -> Box<dyn ProviderClient>
-    where
-        Self: Sized + 'static,
-    {
-        Box::new(self)
-    }
-
-    /// Create a boxed client from the process's environment.
-    /// Panics if an environment is improperly configured.
-    fn from_env_boxed<'a>() -> Box<dyn ProviderClient + 'a>
-    where
-        Self: Sized,
-        Self: 'a,
-    {
-        Box::new(Self::from_env())
-    }
-
-    fn from_val(input: ProviderValue) -> Self
-    where
-        Self: Sized;
-
-    /// Create a boxed client from the process's environment.
-    /// Panics if an environment is improperly configured.
-    fn from_val_boxed<'a>(input: ProviderValue) -> Box<dyn ProviderClient + 'a>
-    where
-        Self: Sized,
-        Self: 'a,
-    {
-        Box::new(Self::from_val(input))
-    }
-}
-
-#[derive(Clone)]
-pub enum ProviderValue {
-    Simple(String),
-    ApiKeyWithOptionalKey(String, Option<String>),
-    ApiKeyWithVersionAndHeader(String, String, String),
-}
-
-impl From<&str> for ProviderValue {
-    fn from(value: &str) -> Self {
-        Self::Simple(value.to_string())
-    }
-}
-
-impl From<String> for ProviderValue {
-    fn from(value: String) -> Self {
-        Self::Simple(value)
-    }
-}
-
-impl<P> From<(P, Option<P>)> for ProviderValue
-where
-    P: AsRef<str>,
-{
-    fn from((api_key, optional_key): (P, Option<P>)) -> Self {
-        Self::ApiKeyWithOptionalKey(
-            api_key.as_ref().to_string(),
-            optional_key.map(|x| x.as_ref().to_string()),
-        )
-    }
-}
-
-impl<P> From<(P, P, P)> for ProviderValue
-where
-    P: AsRef<str>,
-{
-    fn from((api_key, version, header): (P, P, P)) -> Self {
-        Self::ApiKeyWithVersionAndHeader(
-            api_key.as_ref().to_string(),
-            version.as_ref().to_string(),
-            header.as_ref().to_string(),
-        )
-    }
 }
 
 /// Attempt to convert a ProviderClient to a CompletionClient

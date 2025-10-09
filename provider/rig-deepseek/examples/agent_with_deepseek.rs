@@ -12,7 +12,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_target(false)
         .init();
 
-    let client = rig_deepseek::client::Client::from_env();
+    let client = rig_deepseek::client::Client::new("");
     let agent = client
         .agent("deepseek-chat")
         .preamble("You are a helpful assistant.")

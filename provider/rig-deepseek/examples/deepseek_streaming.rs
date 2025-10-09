@@ -8,7 +8,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt().init();
 
     // Create DeepSeek client and agent
-    let deepseek_client = rig_deepseek::client::Client::from_env();
+    let deepseek_client = rig_deepseek::client::Client::new("");
     let agent = deepseek_client
         .agent(rig_deepseek::completion::DEEPSEEK_CHAT)
         .preamble("You are a helpful assistant. Provide detailed and informative responses.")

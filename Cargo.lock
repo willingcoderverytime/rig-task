@@ -1104,6 +1104,7 @@ dependencies = [
  "anyhow",
  "async-stream",
  "futures",
+ "once_cell",
  "reqwest",
  "rig-core",
  "rig_deepseek",

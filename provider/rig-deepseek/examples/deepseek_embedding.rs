@@ -7,7 +7,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt().init();
 
     // Create DeepSeek client
-    let deepseek_client = rig_deepseek::client::Client::from_env();
+    let client = rig_deepseek::client::Client::new("");
     
     // Note: DeepSeek may not have embedding models, so this is a template
     // You would need to check if DeepSeek supports embeddings

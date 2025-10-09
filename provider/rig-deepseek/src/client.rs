@@ -11,7 +11,7 @@
 
 use reqwest::Client as HttpClient;
 use rig::client::{
-    ClientBuilderError, CompletionClient, ProviderClient, ProviderValue, VerifyClient, VerifyError,
+    ClientBuilderError, CompletionClient, ProviderClient, VerifyClient, VerifyError,
 };
 use rig::impl_conversion_traits;
 
@@ -116,25 +116,12 @@ impl Client {
 }
 
 impl ProviderClient for Client {
-    // If you prefer the environment variable approach:
-    fn from_env() -> Self {
-        let api_key = std::env::var("DEEPSEEK_API_KEY").expect("DEEPSEEK_API_KEY not set");
-        Self::new(&api_key)
-    }
-
-    fn name(self) -> String {
-        "Deepseek".to_string()
-    }
-
-    fn api_key(self) -> Option<String> {
-        None
-    }
-
-    fn from_val(input: ProviderValue) -> Self {
-        let ProviderValue::Simple(api_key) = input else {
-            panic!("Incorrect provider value type")
-        };
-        Self::new(&api_key)
+    fn from_config(config: rig::client::AgentConfig) -> Box<dyn ProviderClient>
+    where
+        Self: Sized,
+    {
+        let api_key = config.api_key.expect("DEEPSEEK_API_KEY not set");
+        Box::new(Self::new(&api_key))
     }
 }
 
