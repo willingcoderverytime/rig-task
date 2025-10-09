@@ -25,44 +25,21 @@ pub type BoxCompletionModel<'a> = Box<dyn CompletionModelDyn + 'a>;
 pub type BoxAgentBuilder<'a> = AgentBuilder<CompletionModelHandle<'a>>;
 pub type BoxAgent<'a> = Agent<CompletionModelHandle<'a>>;
 pub type BoxEmbeddingModel<'a> = Box<dyn EmbeddingModelDyn + 'a>;
-
-
+#[derive(Default)]
 pub struct DynClientBuilder {
-    registry: HashMap<String, ClientFactory>,
-}
-
-impl Default for DynClientBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub registry: HashMap<DefaultProviders, ClientFactory>,
 }
 
 impl<'a> DynClientBuilder {
     /// Generate a new instance of `DynClientBuilder`.
     /// By default, every single possible client that can be registered
     /// will be registered to the client builder.
-    pub fn new() -> Self {
-        Self {
-            registry: HashMap::new(),
-        }
-        .register_all(vec![
-            ClientFactory::new(
-                DefaultProviders::Ollama,
-                rig_ollama::client::Client::from_config,
-            ),
-            ClientFactory::new(
-                DefaultProviders::Deepseek,
-                rig_deepseek::client::Client::from_config,
-            ),
-        ])
-    }
 
     /// Register multiple ClientFactories
-    fn register_all(mut self, factories: impl IntoIterator<Item = ClientFactory>) -> Self {
+    pub fn register_all(mut self, factories: impl IntoIterator<Item = ClientFactory>) -> Self {
         for factory in factories {
-            self.registry.insert(factory.name.to_string(), factory);
+            self.registry.insert(factory.name, factory);
         }
-
         self
     }
 
@@ -79,7 +56,7 @@ impl<'a> DynClientBuilder {
     /// Returns a specific client factory (that exists in the registry).
     fn get_factory(&self, provider: DefaultProviders) -> Result<&ClientFactory, ClientBuildError> {
         self.registry
-            .get(&provider.to_string())
+            .get(&provider)
             .ok_or(ClientBuildError::UnknownProvider)
     }
 
@@ -141,7 +118,7 @@ impl<'a> DynClientBuilder {
 
 pub struct ClientFactory {
     pub name: DefaultProviders,
-    pub create_by_config: Box<dyn Fn(AgentConfig) -> Box<dyn ProviderClient>>,
+    pub create_by_config: Box<dyn Fn(AgentConfig) -> Box<dyn ProviderClient> + Send + Sync>,
 }
 
 impl UnwindSafe for ClientFactory {}
@@ -150,7 +127,7 @@ impl RefUnwindSafe for ClientFactory {}
 impl ClientFactory {
     pub fn new<F1>(name: DefaultProviders, create_by_config: F1) -> Self
     where
-        F1: 'static + Fn(AgentConfig) -> Box<dyn ProviderClient>,
+        F1: 'static + Fn(AgentConfig) -> Box<dyn ProviderClient> + Send + Sync,
     {
         Self {
             name,

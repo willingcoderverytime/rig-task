@@ -1,11 +1,20 @@
-use std::fmt;
+use std::{collections::HashMap, fmt, sync::Arc};
 
-use rig::{agent::Agent, client::AgentConfig};
+use once_cell::sync::OnceCell;
+use rig::{
+    agent::Agent,
+    client::{AgentConfig, ProviderClient},
+};
 use rig_deepseek::completion::DsCompletionModel;
-use rig_ollama::{completion::OllamaCompletionModel, embedding::OlEmbeddingModel};
+use rig_ollama::completion::OllamaCompletionModel;
 use serde_json;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use crate::{
+    agent_builder::{ClientFactory, DynClientBuilder},
+    mananger::AgentManager,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DefaultProviders {
     Deepseek,
     Ollama,
@@ -22,6 +31,40 @@ impl fmt::Display for DefaultProviders {
             DefaultProviders::Ollama => write!(f, "ollama"),
         }
     }
+}
+
+static INST: OnceCell<Arc<DynClientBuilder>> = OnceCell::new();
+impl<'a> DynClientBuilder {
+    pub fn global() -> Arc<DynClientBuilder> {
+        if INST.get().is_none() {
+            if INST.set(Arc::new(Self::new())).is_err() {
+                panic!("Client Factory init Failed!")
+            }
+        }
+        let x = INST.get().expect("Builder not initialized");
+        x.clone()
+    }
+
+    fn new() -> Self {
+        Self {
+            registry: HashMap::new(),
+        }
+        .register_all(vec![
+            ClientFactory::new(
+                DefaultProviders::Ollama,
+                rig_ollama::client::Client::from_config,
+            ),
+            ClientFactory::new(
+                DefaultProviders::Deepseek,
+                rig_deepseek::client::Client::from_config,
+            ),
+        ])
+    }
+}
+
+pub struct AgentConfOwn {
+    pub provider: DefaultProviders,
+    pub config: AgentConfig,
 }
 
 pub trait SupportFindTrait {
@@ -58,10 +101,7 @@ impl SupportFindTrait for EnvAgentFinder {
         configs
     }
 }
-pub struct AgentConfOwn {
-    pub provider: DefaultProviders,
-    pub config: AgentConfig,
-}
+
 /// [from_env] 从环境变量中获取的默认实现。
 /// ollama.model=
 /// ollama.name=
