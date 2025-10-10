@@ -9,10 +9,7 @@ use rig_deepseek::completion::DsCompletionModel;
 use rig_ollama::completion::OllamaCompletionModel;
 use serde_json;
 
-use crate::{
-    agent_builder::{ClientFactory, DynClientBuilder},
-    mananger::AgentManager,
-};
+use crate::agent_builder::{ClientFactory, DynClientBuilder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DefaultProviders {
@@ -46,6 +43,7 @@ impl<'a> DynClientBuilder {
     }
 
     fn new() -> Self {
+        // 这里可以控制feature 进行条件装填。
         Self {
             registry: HashMap::new(),
         }
@@ -156,6 +154,7 @@ fn from_env(id: &str, provider: DefaultProviders) -> Option<AgentConfOwn> {
         provider,
         config: AgentConfig {
             model,
+            desc: None,
             name,
             base_url,
             api_key,

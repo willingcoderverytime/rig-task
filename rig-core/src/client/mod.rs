@@ -24,9 +24,10 @@ pub enum ClientBuilderError {
     #[error("invalid property: {0}")]
     InvalidProperty(&'static str),
 }
-
+#[derive(Clone)]
 pub struct AgentConfig {
     pub name: String,
+    pub desc: Option<String>,
     pub model: String,
     pub base_url: String,
     pub sys_promte: Option<String>,
@@ -45,7 +46,7 @@ pub struct AgentConfig {
 pub trait ProviderClient: AsCompletion + AsEmbeddings + Debug {
     /// Create a client from the process's environment.
     /// Panics if an environment is improperly configured.
-    fn from_config(config: AgentConfig) ->  Box<dyn ProviderClient>
+    fn from_config(config: AgentConfig) -> Box<dyn ProviderClient>
     where
         Self: Sized;
 }

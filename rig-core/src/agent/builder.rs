@@ -181,8 +181,8 @@ where
     }
 
     /// Set the temperature of the model
-    pub fn temperature(mut self, temperature: f64) -> Self {
-        self.temperature = Some(temperature);
+    pub fn temperature(mut self, _temperature: f64) -> Self {
+        self.temperature = Some(0 as f64);
         self
     }
 

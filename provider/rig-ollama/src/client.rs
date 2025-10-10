@@ -145,8 +145,7 @@ impl ProviderClient for Client {
     where
         Self: Sized,
     {
-        let api_base = config.base_url;
-        Box::new(Self::builder().base_url(&api_base).build().unwrap())
+        Box::new(Self::builder().base_url(&config.base_url).build().unwrap())
     }
 }
 

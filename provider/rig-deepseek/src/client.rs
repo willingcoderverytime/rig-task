@@ -120,8 +120,8 @@ impl ProviderClient for Client {
     where
         Self: Sized,
     {
-        let api_key = config.api_key.expect("DEEPSEEK_API_KEY not set");
-        Box::new(Self::new(&api_key))
+        let api_key = config.api_key.as_ref().expect("DEEPSEEK_API_KEY not set");
+        Box::new(Self::new(api_key))
     }
 }
 

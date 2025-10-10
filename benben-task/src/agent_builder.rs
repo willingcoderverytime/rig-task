@@ -60,33 +60,14 @@ impl<'a> DynClientBuilder {
             .ok_or(ClientBuildError::UnknownProvider)
     }
 
-    /// Get a boxed completion model based on the provider and model.
-    pub fn completion(
-        &self,
-        provider: DefaultProviders,
-        config: AgentConfig,
-    ) -> Result<BoxCompletionModel<'a>, ClientBuildError> {
-        let modle = config.model.clone();
-        let client = self.build(provider, config)?;
-
-        let completion = client
-            .as_completion()
-            .ok_or(ClientBuildError::UnsupportedFeature(
-                provider.to_string(),
-                "completion".to_owned(),
-            ))?;
-
-        Ok(completion.completion_model(&modle))
-    }
-
     /// Get a boxed agent based on the provider and model..
     pub fn agent(
         &self,
         provider: DefaultProviders,
         config: AgentConfig,
-    ) -> Result<BoxAgentBuilder<'a>, ClientBuildError> {
+    ) -> Result<Agent<CompletionModelHandle<'_>>, ClientBuildError> {
         let modle = config.model.clone();
-        let client = self.build(provider, config)?;
+        let client = self.build(provider, config.clone())?;
 
         let client = client
             .as_completion()
@@ -95,7 +76,23 @@ impl<'a> DynClientBuilder {
                 "completion".to_string(),
             ))?;
 
-        Ok(client.agent(&modle))
+        let build = client.agent(&modle);
+        let mut agent_builder = build
+            .preamble(&config.sys_promte.unwrap_or_default());
+
+        // 设置名称
+        if !config.name.is_empty() {
+            agent_builder = agent_builder.name(&config.name);
+        }
+
+        // 设置描述
+        if let Some(desc) = &config.desc {
+            agent_builder = agent_builder.description(desc);
+        }
+
+        let agent = agent_builder.build();
+
+        Ok(agent)
     }
 
     // pub fn embeddings(
@@ -115,7 +112,6 @@ impl<'a> DynClientBuilder {
     //     Ok(embeddings.embedding_model(model))
     // }
 }
-
 pub struct ClientFactory {
     pub name: DefaultProviders,
     pub create_by_config: Box<dyn Fn(AgentConfig) -> Box<dyn ProviderClient> + Send + Sync>,

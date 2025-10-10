@@ -2,7 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::OnceCell;
 
-use crate::agent_support::{self, SuportAgent, SupportFindTrait};
+use crate::{
+    agent_builder::DynClientBuilder,
+    agent_support::{self, AgentConfOwn, SuportAgent, SupportFindTrait},
+};
 
 #[derive(Clone, Default)]
 pub struct AgentManager {
@@ -28,10 +31,9 @@ impl AgentManager {
         let api: Arc<AgentManager> = Arc::new(AgentManager::default());
         let support_config = support.find_config();
 
-        for ele in support_config {
-            
-        
-
+        let build = DynClientBuilder::global();
+        for AgentConfOwn { provider, config } in support_config {
+            let completion = build.agent(provider, config);
         }
 
         let aa = INST.set(api.clone());
