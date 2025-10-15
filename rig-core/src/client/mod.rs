@@ -8,7 +8,7 @@ pub mod verify;
 
 #[cfg(feature = "derive")]
 pub use rig_derive::ProviderClient;
-use std::collections::HashMap;
+use serde::Deserialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -24,18 +24,43 @@ pub enum ClientBuilderError {
     #[error("invalid property: {0}")]
     InvalidProperty(&'static str),
 }
-#[derive(Clone)]
+
+#[derive(Clone, Deserialize)]
+pub struct McpStdio {
+    // cargo run | xxx.exe |
+    pub command: String,
+    // test.exe ---help xxx ....
+    pub args: Vec<String>,
+    // 必须是相对路径，绝对路径不能超过 cargo manifest  rutime currentdir。
+    pub path: Option<String>,
+}
+/// McpType : 理论是上resource 应当是配置类型，当是stdio 形态的时候应当由args统一进行设定。
+/// roots: 再这个client中应当是默认的 特定workspace中，应当再切换版本时进行指定。
+///
+///
+#[derive(Clone, Deserialize)]
+pub enum McpType {
+    Nothing,
+    STDIO(McpStdio),
+    // 暂时先这样 StremHttp 以及 sse 暂时不用，且都是url 并不好区分，等后续再考虑。
+    SHTTP(String),
+    // SSE(String)
+}
+
+#[derive(Clone, Deserialize)]
 pub struct AgentConfig {
     pub name: String,
-    pub desc: Option<String>,
+    // 需要独立的校验规则。
+    pub code: String,
+    pub desc: String,
+    pub error:Option<String>,
     pub model: String,
     pub base_url: String,
     pub sys_promte: Option<String>,
     pub api_key: Option<String>,
-    pub auth_map: Option<HashMap<String, Option<String>>>,
-    pub mcp: Option<String>,
-    pub mcp_path: Option<String>,
-    pub mcp_map: Option<HashMap<String, Option<String>>>,
+    // todo 认证系统。主要针对可能得大模型
+    // pub auth_map: Option<HashMap<String, Option<String>>>,
+    pub mcp: McpType,
 }
 
 /// The base ProviderClient trait, facilitates conversion between client types

@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt, sync::Arc};
 use once_cell::sync::OnceCell;
 use rig::{
     agent::Agent,
-    client::{AgentConfig, ProviderClient},
+    client::{AgentConfig, McpType, ProviderClient},
 };
 use rig_deepseek::completion::DsCompletionModel;
 use rig_ollama::completion::OllamaCompletionModel;
@@ -15,10 +15,6 @@ use crate::agent_builder::{ClientFactory, DynClientBuilder};
 pub enum DefaultProviders {
     Deepseek,
     Ollama,
-}
-pub enum SuportAgent {
-    Ollama(Agent<OllamaCompletionModel>),
-    DeepSeek(Agent<DsCompletionModel>),
 }
 
 impl fmt::Display for DefaultProviders {
@@ -127,6 +123,17 @@ fn from_env(id: &str, provider: DefaultProviders) -> Option<AgentConfOwn> {
     if name.is_empty() {
         return None;
     }
+
+    let code = std::env::var(format!("{}.code", id)).unwrap_or_default();
+    if code.is_empty() {
+        return None;
+    }
+
+    let desc = std::env::var(format!("{}.desc", id)).unwrap_or_default();
+    if desc.is_empty() {
+        return None;
+    }
+
     let api_key = std::env::var(format!("{}.api_key", id)).ok();
     let base_url = std::env::var(format!("{}.base_url", id)).unwrap_or_default();
     if base_url.is_empty() {
@@ -134,35 +141,27 @@ fn from_env(id: &str, provider: DefaultProviders) -> Option<AgentConfOwn> {
     }
     let sys_promte = std::env::var(format!("{}.sys_promte", id)).ok();
     let mcp = std::env::var(format!("{}.mcp", id)).ok();
-    let mcp_path = std::env::var(format!("{}.mcp.path", id)).ok();
-    let auth_map = std::env::var(format!("{}.auth_map", id)).unwrap_or_default();
-    let mcp_map = std::env::var(format!("{}.mcp.map", id)).unwrap_or_default();
-    // Parse auth_map and mcp_map as HashMap<String, String>
-    let auth_map = if !auth_map.is_empty() {
-        serde_json::from_str(&auth_map).ok()
+
+    let mcp: McpType = if let Some(mcp) = mcp {
+        serde_json::from_str(&mcp).unwrap_or(McpType::Nothing)
     } else {
-        None
+        McpType::Nothing
     };
 
-    let mcp_map = if !mcp_map.is_empty() {
-        serde_json::from_str(&mcp_map).ok()
-    } else {
-        None
-    };
+    let mcp: McpType = serde_json::from_str("").unwrap();
 
     Some(AgentConfOwn {
         provider,
         config: AgentConfig {
             model,
-            desc: None,
+            code,
+            error: None,
+            desc,
             name,
             base_url,
             api_key,
             sys_promte,
             mcp,
-            mcp_path,
-            auth_map,
-            mcp_map,
         },
     })
 }

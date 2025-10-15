@@ -1,15 +1,22 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::OnceCell;
+use rig::{
+    agent::Agent,
+    client::{AgentConfig, completion::CompletionModelHandle},
+};
+use rig_ollama::completion::OllamaCompletionModel;
+use rmcp::handler::server::prompt;
 
 use crate::{
     agent_builder::DynClientBuilder,
-    agent_support::{self, AgentConfOwn, SuportAgent, SupportFindTrait},
+    agent_support::{AgentConfOwn, SupportFindTrait},
 };
 
 #[derive(Clone, Default)]
 pub struct AgentManager {
-    pub agent_map: HashMap<String, Arc<SuportAgent>>,
+    pub agent_map: HashMap<String, Arc<Agent<CompletionModelHandle<'static>>>>,
+    pub agent_vec: Vec<Arc<AgentConfig>>,
 }
 
 // Static instance for global access
@@ -27,30 +34,60 @@ impl AgentManager {
     }
 
     /// Initialize the static RagApi instance
+    /// Initialize the static RagApi instance
     pub async fn init_global(support: impl SupportFindTrait) -> Result<Arc<AgentManager>, String> {
-        let api: Arc<AgentManager> = Arc::new(AgentManager::default());
+        let mut api = AgentManager::default();
         let support_config = support.find_config();
 
         let build = DynClientBuilder::global();
-        for AgentConfOwn { provider, config } in support_config {
-            let completion = build.agent(provider, config);
+        // let mut agent_futures = Vec::new();
+        for AgentConfOwn {
+            provider,
+            mut config,
+        } in support_config
+        {
+            let config_code = config.code.clone();
+            let future = build.agent(provider, config.clone()).await;
+            match future {
+                Ok(agent) => {
+                    api.agent_map.insert(config_code, Arc::new(agent));
+                }
+                // maybe log error info
+                Err(e) => {
+                    tracing::error!("init cmp client failed{e}");
+                    config.error = Some(e.to_string())
+                }
+            }
+            api.agent_vec.push(Arc::new(config));
         }
 
-        let aa = INST.set(api.clone());
-        if aa.is_err() {
-            return Err("agent mananger init failed".to_string());
+        let manager = Arc::new(api);
+        if INST.set(manager.clone()).is_err() {
+            return Err("agent manager init failed".to_string());
         }
-        Ok(api)
+        Ok(manager)
     }
 
-    pub fn list_agent() -> Vec<AgentVO> {
-        vec![]
+    pub fn list_agent(&self) -> Vec<AgentVo> {
+        let mut agent_info_vec = Vec::new();
+        for ele in &self.agent_vec {
+            let agent = AgentVo {
+                name: ele.name.clone(),
+                desc: ele.desc.clone(),
+                error: ele.error.clone(),
+            };
+            agent_info_vec.push(agent);
+        }
+        agent_info_vec
     }
     /// 最终军事以string 吐出去，最终由task 取处理，前后置信息，无论是json diff。
-    pub fn execute() -> String {
+    pub fn execute(prompt: String,/*  plan: WorkFlow */) -> String {
         String::new()
     }
 }
-/// 代理 agent 多数信息是来源你与 supportconfig。
-/// 但关键信息如addtion parameter api key 等等是不允许进行的。
-pub struct AgentVO {}
+
+pub struct AgentVo {
+    pub name: String,
+    pub desc: String,
+    pub error: Option<String>,
+}

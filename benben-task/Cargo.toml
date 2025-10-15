@@ -21,3 +21,13 @@ once_cell = { version = "1.21.3" }
 # Provider dependencies (uncomment as needed)
 rig_ollama = { path = "../provider/rig-ollama" }
 rig_deepseek = { path = "../provider/rig-deepseek" }
+
+rmcp = { workspace = true, features = [
+    "client",
+    # "transport-sse-client-reqwest",
+    # "reqwest",
+    # "transport-streamable-http-client-reqwest",
+    "transport-child-process",
+    "tower",
+    # "auth",
+] }

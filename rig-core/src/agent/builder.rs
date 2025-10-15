@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use rmcp::{RoleClient, model::InitializeRequestParam, service::RunningService};
+
 use crate::{
     completion::{CompletionModel, Document},
     message::ToolChoice,
@@ -60,6 +62,8 @@ where
     dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
     /// Temperature of the model
     temperature: Option<f64>,
+
+    client: Option<RunningService<RoleClient, InitializeRequestParam>>,
     /// Actual tool implementations
     tools: ToolSet,
     /// Whether or not the underlying LLM should be forced to use a tool before providing a response.
@@ -85,6 +89,7 @@ where
             dynamic_tools: vec![],
             tools: ToolSet::default(),
             tool_choice: None,
+            client: None,
         }
     }
 
@@ -198,6 +203,15 @@ where
         self
     }
 
+    /// Set Mcp Client
+    pub fn mcp_client(
+        mut self,
+        client: RunningService<RoleClient, InitializeRequestParam>,
+    ) -> Self {
+        self.client = Some(client);
+        self
+    }
+
     /// Build the agent
     pub fn build(self) -> Agent<M> {
         Agent {
@@ -214,6 +228,7 @@ where
             dynamic_context: Arc::new(self.dynamic_context),
             dynamic_tools: Arc::new(self.dynamic_tools),
             tools: Arc::new(self.tools),
+            mcp_client: Arc::new(self.client),
         }
     }
 }

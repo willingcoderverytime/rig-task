@@ -1,13 +1,17 @@
+use crate::agent_support::DefaultProviders;
 use rig::agent::{Agent, AgentBuilder};
 use rig::client::completion::CompletionModelHandle;
-use rig::client::{AgentConfig, ProviderClient};
+use rig::client::{AgentConfig, McpStdio, McpType, ProviderClient};
 use rig::completion::CompletionModelDyn;
 use rig::embeddings::embedding::EmbeddingModelDyn;
+use rmcp::model::{ClientCapabilities, ClientInfo, Implementation, InitializeRequestParam};
+use rmcp::service::RunningService;
+use rmcp::transport::{ConfigureCommandExt as _, TokioChildProcess};
+use rmcp::{RoleClient, ServiceExt as _};
 use std::collections::HashMap;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use thiserror::Error;
-
-use crate::agent_support::DefaultProviders;
+use tokio::process::Command;
 
 #[derive(Debug, Error)]
 pub enum ClientBuildError {
@@ -19,6 +23,10 @@ pub enum ClientBuildError {
     UnsupportedFeature(String, String),
     #[error("unknown provider")]
     UnknownProvider,
+    #[error("Stdio MCP Execute Failed")]
+    MCPStidioExecuteFailed(std::io::Error),
+    #[error("Stdio MCP Client Init Failed {}",.0)]
+    MCPClinetInitError(rmcp::service::ClientInitializeError),
 }
 
 pub type BoxCompletionModel<'a> = Box<dyn CompletionModelDyn + 'a>;
@@ -61,11 +69,11 @@ impl<'a> DynClientBuilder {
     }
 
     /// Get a boxed agent based on the provider and model..
-    pub fn agent(
+    pub async fn agent(
         &self,
         provider: DefaultProviders,
         config: AgentConfig,
-    ) -> Result<Agent<CompletionModelHandle<'_>>, ClientBuildError> {
+    ) -> Result<Agent<CompletionModelHandle<'static>>, ClientBuildError> {
         let modle = config.model.clone();
         let client = self.build(provider, config.clone())?;
 
@@ -76,21 +84,38 @@ impl<'a> DynClientBuilder {
                 "completion".to_string(),
             ))?;
 
-        let build = client.agent(&modle);
-        let mut agent_builder = build
-            .preamble(&config.sys_promte.unwrap_or_default());
+        let mut build = client.agent(&modle);
 
         // 设置名称
         if !config.name.is_empty() {
-            agent_builder = agent_builder.name(&config.name);
+            build = build.name(&config.name);
         }
 
         // 设置描述
-        if let Some(desc) = &config.desc {
-            agent_builder = agent_builder.description(desc);
+        build = build.description( &config.desc);
+
+        // 设定系统提示词。
+        if let Some(sys_promte) = &config.sys_promte {
+            build = build.preamble(sys_promte);
         }
 
-        let agent = agent_builder.build();
+        if let Some(sys_promte) = &config.sys_promte {
+            build = build.preamble(sys_promte);
+        }
+        build = build.temperature(0.0);
+
+        // 无论如何也需要进行roots 配置。
+        match config.mcp {
+            McpType::Nothing => {}
+            McpType::STDIO(mcp_stdio) => {
+                let client: RunningService<RoleClient, InitializeRequestParam> =
+                    build_agent(mcp_stdio).await?;
+                build = build.mcp_client(client);
+            }
+            McpType::SHTTP(_) => todo!(),
+        }
+
+        let agent = build.build();
 
         Ok(agent)
     }
@@ -134,5 +159,67 @@ impl ClientFactory {
     fn build(&self, agent_conf: AgentConfig) -> Result<Box<dyn ProviderClient>, ClientBuildError> {
         std::panic::catch_unwind(|| (self.create_by_config)(agent_conf))
             .map_err(|e| ClientBuildError::FactoryError(format!("{e:?}")))
+    }
+}
+
+async fn build_agent(
+    mcp_stdio: McpStdio,
+) -> Result<RunningService<RoleClient, InitializeRequestParam>, ClientBuildError> {
+    let servers_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("CARGO_MANIFEST_DIR is not set");
+
+    let client_info = ClientInfo {
+        protocol_version: Default::default(),
+        capabilities: ClientCapabilities::default(),
+        client_info: Implementation {
+            name: "local stdio client".to_string(),
+            title: None,
+            version: "0.0.1".to_string(),
+            website_url: None,
+            icons: None,
+        },
+    };
+    //mcp_stdio 判断是否存在...  bug ../容易形成漏洞攻击。 但是，本质上已经允许  stdio 启动了，可不在意这种级别的漏洞，因为已经透明了。
+    let zhiding_loction = servers_dir.join(mcp_stdio.path.unwrap_or_default());
+    let mut command = Command::new(mcp_stdio.command);
+
+    for ele in mcp_stdio.args {
+        command.arg(ele);
+    }
+    command.current_dir(zhiding_loction);
+
+    let transport =
+        TokioChildProcess::new(command).map_err(|e| ClientBuildError::MCPStidioExecuteFailed(e))?;
+
+    let client = client_info
+        .serve(transport)
+        .await
+        .inspect_err(|e| {
+            tracing::error!("client error: {:?}", e);
+        })
+        .map_err(|e: rmcp::service::ClientInitializeError| {
+            ClientBuildError::MCPClinetInitError(e)
+        })?;
+    // Ok("".to_string())
+    Ok(client)
+}
+
+#[cfg(test)]
+mod test {
+    use std::fs;
+
+    #[test]
+    fn test_path() {
+        let servers_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("CARGO_MANIFEST_DIR is not set")
+            .join("servers");
+        let dd = servers_dir.join("../benben-task/src/..");
+        let xx = servers_dir.as_path();
+        let yy = fs::canonicalize(dd.clone()).unwrap();
+        println!("{}", servers_dir.to_str().unwrap_or_default());
+        println!("{}", dd.to_str().unwrap_or_default());
+        println!("{}", yy.to_str().unwrap_or_default());
     }
 }

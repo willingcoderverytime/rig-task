@@ -11,6 +11,7 @@ use crate::{
     vector_store::{VectorStoreError, request::VectorSearchRequest},
 };
 use futures::{StreamExt, TryStreamExt, stream};
+use rmcp::{RoleClient, model::InitializeRequestParam, service::RunningService};
 use std::{collections::HashMap, sync::Arc};
 
 const UNKNOWN_AGENT_NAME: &str = "Unnamed Agent";
@@ -63,7 +64,9 @@ where
     pub dynamic_context: Arc<Vec<(usize, Box<dyn crate::vector_store::VectorStoreIndexDyn>)>>,
     /// Dynamic tools
     pub dynamic_tools: Arc<Vec<(usize, Box<dyn crate::vector_store::VectorStoreIndexDyn>)>>,
-    /// Actual tool implementations
+    /// agent mcp server
+    pub mcp_client: Arc<Option<RunningService<RoleClient, InitializeRequestParam>>>,
+    /// Actual tool implementations  拥有高性能的Tools
     pub tools: Arc<ToolSet>,
     /// Whether or not the underlying LLM should be forced to use a tool before providing a response.
     pub tool_choice: Option<ToolChoice>,
