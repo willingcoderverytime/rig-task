@@ -35,7 +35,22 @@ state
 wid  == 当前执行 流程节点
 planid == 当前执行过程当前任务id
 ```
+task一执行第一步就是执行计划。 此计划应当再promt 里面存在更改或者由ai自动调用。
 ## Plan
 此计划为assisant 根据现状置顶的计划以及子计划
+```sql
+id
+pid
+state=成功与否
+planid == 当前执行过程当前任务id
+```
 ## ToolLog
 用于记录工具调用，最终的计划智能体，可以进行介入，完成ToolLog 的reverse。
+任务记录应当是一个aop形式的，tool根据triat设定自己决定是否进行记录。并用于后续恢复。
+若是查询类的可不进行入库。
+```sql 
+taskid
+planid
+args
+ouput
+```
