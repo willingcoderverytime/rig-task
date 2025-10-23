@@ -54,3 +54,6 @@ planid
 args
 ouput
 ```
+## TaskState
+
+Runing、Stop、Cancel、Finish

@@ -18,10 +18,6 @@
 //! step5 ---完成工作。
 //!           
 
-use sea_orm::EntityTrait;
-
-use crate::entities::{workflow, task, plan, job};
-
 pub struct TaskVo {
     // 调用这个任务的时候work flow的定义
     pub input: String,
@@ -40,50 +36,129 @@ pub struct TaskVo {
 /// 其决策依据就是plan计划执行对智能体的调度，并完成对计划表的维护。
 /// 
 /// 完成入库操作之后，待着workflowId  taskId 以及 input 丢入任务执行引擎。
-
-pub async fn start_task(task: TaskVo) {
-    // This function would typically be async, but to keep the signature unchanged,
-    // we'll assume the actual implementation would be in an async context
+pub async fn start_task(_task: TaskVo) {
+    // In a real implementation, this would:
+    // 1. Query the workflow by workflowid
+    // 2. Create a new task in the database
+    // 3. Initialize the task with the engine
+    // 4. Start the task execution
     
-    // Step 1: Query workflow plan field by workflowId
-    // In a real implementation, this would query the database for the workflow
-    // let workflow = workflow::Entity::find_by_id(task.workflowid).one(db).await?;
-    
-    // Step 2: Create task to get task id
-    // let new_task = task::ActiveModel {
-    //     input: Set(Some(task.input)),
-    //     workflow_id: Set(task.workflowid.parse().unwrap_or(0)),
-    //     ..Default::default()
-    // };
-    // let inserted_task = task::Entity::insert(new_task).exec_with_returning(db).await?;
-    
-    // Step 3: Split plan by delimiter and populate plan table
-    // if let Some(plan_content) = workflow.plan {
-    //     let plan_items: Vec<&str> = plan_content.split('|').collect();
-    //     for item in plan_items {
-    //         let new_plan = plan::ActiveModel {
-    //             task_id: Set(Some(inserted_task.id)),
-    //             content: Set(Some(item.to_string())),
-    //             ..Default::default()
-    //         };
-    //         plan::Entity::insert(new_plan).exec_with_returning(db).await?;
-    //     }
-    // }
-    
-    // Step 4: Query jobs associated with workflowId to get agent overview
-    // let jobs = job::Entity::find()
-    //     .filter(job::Column::WorkflowId.eq(inserted_task.workflow_id))
-    //     .all(db)
-    //     .await?;
-    
-    // Final step: Pass workflowId, taskId, and input to task execution engine
-    // execute_task_engine(task.workflowid, inserted_task.id, task.input, jobs);
-    
-    // Note: This is a simplified implementation showing the logic flow
-    // A real implementation would need proper error handling and database connections
+    // For now, we're just providing the function structure
+    println!("Task start functionality would be implemented here");
 }
 
-// Placeholder for the actual task execution engine
-// fn execute_task_engine(workflow_id: String, task_id: i32, input: String, jobs: Vec<job::Model>) {
-//     // Implementation would go here
-// }
+///[stop_task] 根据任务Id进行任务暂停任务执行，
+/// 根据任务Id 调用 engine 完成任务task
+pub async fn stop_task(task_id: &str) {
+    // Parse the task_id string to i32
+    match task_id.parse::<i32>() {
+        Ok(id) => {
+            // Get the global task engine instance
+            if let Some(engine) = crate::engine::TaskEngine::global() {
+                // Call the stop method on the engine
+                match engine.stop(id).await {
+                    Ok(_) => {
+                        // Task successfully stopped
+                        println!("Task {} successfully stopped", id);
+                    }
+                    Err(e) => {
+                        // Handle error when stopping task
+                        eprintln!("Failed to stop task {}: {}", id, e);
+                    }
+                }
+            } else {
+                eprintln!("Task engine not initialized");
+            }
+        }
+        Err(_) => {
+            eprintln!("Invalid task ID: {}", task_id);
+        }
+    }
+}
+
+/// [resume_task] 根据任务Id恢复任务执行
+/// 根据任务Id调用engine完成任务恢复
+pub async fn resume_task(task_id: &str) {
+    // Parse the task_id string to i32
+    match task_id.parse::<i32>() {
+        Ok(id) => {
+            // Get the global task engine instance
+            if let Some(engine) = crate::engine::TaskEngine::global() {
+                // Call the resume method on the engine
+                match engine.resume(id).await {
+                    Ok(_) => {
+                        // Task successfully resumed
+                        println!("Task {} successfully resumed", id);
+                    }
+                    Err(e) => {
+                        // Handle error when resuming task
+                        eprintln!("Failed to resume task {}: {}", id, e);
+                    }
+                }
+            } else {
+                eprintln!("Task engine not initialized");
+            }
+        }
+        Err(_) => {
+            eprintln!("Invalid task ID: {}", task_id);
+        }
+    }
+}
+
+/// [cancel_task] 根据任务Id取消任务执行
+/// 根据任务Id调用engine完成任务取消
+pub async fn cancel_task(task_id: &str) {
+    // Parse the task_id string to i32
+    match task_id.parse::<i32>() {
+        Ok(id) => {
+            // Get the global task engine instance
+            if let Some(engine) = crate::engine::TaskEngine::global() {
+                // Call the cancel method on the engine
+                match engine.cancel(id).await {
+                    Ok(_) => {
+                        // Task successfully cancelled
+                        println!("Task {} successfully cancelled", id);
+                    }
+                    Err(e) => {
+                        // Handle error when cancelling task
+                        eprintln!("Failed to cancel task {}: {}", id, e);
+                    }
+                }
+            } else {
+                eprintln!("Task engine not initialized");
+            }
+        }
+        Err(_) => {
+            eprintln!("Invalid task ID: {}", task_id);
+        }
+    }
+}
+
+/// [finish_task] 根据任务Id完成任务执行
+/// 根据任务Id调用engine完成任务结束
+pub async fn finish_task(task_id: &str) {
+    // Parse the task_id string to i32
+    match task_id.parse::<i32>() {
+        Ok(id) => {
+            // Get the global task engine instance
+            if let Some(engine) = crate::engine::TaskEngine::global() {
+                // Call the finish method on the engine
+                match engine.finish(id).await {
+                    Ok(_) => {
+                        // Task successfully finished
+                        println!("Task {} successfully finished", id);
+                    }
+                    Err(e) => {
+                        // Handle error when finishing task
+                        eprintln!("Failed to finish task {}: {}", id, e);
+                    }
+                }
+            } else {
+                eprintln!("Task engine not initialized");
+            }
+        }
+        Err(_) => {
+            eprintln!("Invalid task ID: {}", task_id);
+        }
+    }
+}
