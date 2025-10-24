@@ -1,6 +1,7 @@
-use rig::completion::{CompletionError, ToolDefinition};
+use rig::completion::{CompletionError};
 use rig::json_utils;
 use rig::message::{ToolCall, ToolChoice, ToolResult, ToolResultContent};
+use rmcp::model::Tool;
 use serde::{Deserialize, Serialize};
 
 use crate::convert::message::DsMessage;
@@ -48,11 +49,11 @@ impl TryFrom<ToolChoice> for DsToolChoice {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DsToolDefinition {
     pub r#type: String,
-    pub function: ToolDefinition,
+    pub function: Tool,
 }
 
-impl From<ToolDefinition> for DsToolDefinition {
-    fn from(tool: ToolDefinition) -> Self {
+impl From<Tool> for DsToolDefinition {
+    fn from(tool: Tool) -> Self {
         Self {
             r#type: "function".into(),
             function: tool,

@@ -1,17 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use rmcp::{RoleClient, model::InitializeRequestParam, service::RunningService};
+use tokio::time::error::Elapsed;
 
 use crate::{
     completion::{CompletionModel, Document},
     message::ToolChoice,
-    tool::{Tool, ToolSet},
-    vector_store::VectorStoreIndexDyn,
 };
-
-#[cfg(feature = "rmcp")]
-#[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
-use crate::tool::rmcp::McpTool as RmcpTool;
 
 use super::Agent;
 
@@ -56,18 +51,11 @@ where
     additional_params: Option<serde_json::Value>,
     /// Maximum number of tokens for the completion
     max_tokens: Option<u64>,
-    /// List of vector store, with the sample number
-    dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
-    /// Dynamic tools
-    dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+
     /// Temperature of the model
     temperature: Option<f64>,
 
     mcp_client: Option<RunningService<RoleClient, InitializeRequestParam>>,
-    /// Actual tool implementations
-    tools: ToolSet,
-    /// Whether or not the underlying LLM should be forced to use a tool before providing a response.
-    tool_choice: Option<ToolChoice>,
 }
 
 impl<M> AgentBuilder<M>
@@ -85,10 +73,6 @@ where
             temperature: None,
             max_tokens: None,
             additional_params: None,
-            dynamic_context: vec![],
-            dynamic_tools: vec![],
-            tools: ToolSet::default(),
-            tool_choice: None,
             mcp_client: None,
         }
     }
@@ -137,54 +121,6 @@ where
         self
     }
 
-    /// Add a static tool to the agent
-    pub fn tool(mut self, tool: impl Tool + 'static) -> Self {
-        let toolname = tool.name();
-        self.tools.add_tool(tool);
-        self.static_tools.push(toolname);
-        self
-    }
-
-    // Add an MCP tool (from `rmcp`) to the agent
-    #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
-    #[cfg(feature = "rmcp")]
-    pub fn rmcp_tool(mut self, tool: rmcp::model::Tool, client: rmcp::service::ServerSink) -> Self {
-        let toolname = tool.name.clone();
-        self.tools.add_tool(RmcpTool::from_mcp_server(tool, client));
-        self.static_tools.push(toolname.to_string());
-        self
-    }
-
-    /// Add some dynamic context to the agent. On each prompt, `sample` documents from the
-    /// dynamic context will be inserted in the request.
-    pub fn dynamic_context(
-        mut self,
-        sample: usize,
-        dynamic_context: impl VectorStoreIndexDyn + 'static,
-    ) -> Self {
-        self.dynamic_context
-            .push((sample, Box::new(dynamic_context)));
-        self
-    }
-
-    pub fn tool_choice(mut self, tool_choice: ToolChoice) -> Self {
-        self.tool_choice = Some(tool_choice);
-        self
-    }
-
-    /// Add some dynamic tools to the agent. On each prompt, `sample` tools from the
-    /// dynamic toolset will be inserted in the request.
-    pub fn dynamic_tools(
-        mut self,
-        sample: usize,
-        dynamic_tools: impl VectorStoreIndexDyn + 'static,
-        toolset: ToolSet,
-    ) -> Self {
-        self.dynamic_tools.push((sample, Box::new(dynamic_tools)));
-        self.tools.add_tools(toolset);
-        self
-    }
-
     /// Set the temperature of the model
     pub fn temperature(mut self, _temperature: f64) -> Self {
         self.temperature = Some(0 as f64);
@@ -214,6 +150,12 @@ where
 
     /// Build the agent
     pub fn build(self) -> Agent<M> {
+        let mcp = if let Some(mcp_rc) = self.mcp_client {
+            Some(Arc::new(mcp_rc))
+        } else {
+            None
+        };
+
         Agent {
             name: self.name,
             description: self.description,
@@ -224,11 +166,7 @@ where
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             additional_params: self.additional_params,
-            tool_choice: self.tool_choice,
-            dynamic_context: Arc::new(self.dynamic_context),
-            dynamic_tools: Arc::new(self.dynamic_tools),
-            tools: Arc::new(self.tools),
-            mcp_client: Arc::new(self.mcp_client),
+            mcp_client: mcp,
         }
     }
 }

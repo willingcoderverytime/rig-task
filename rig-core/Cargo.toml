@@ -23,16 +23,14 @@ as-any = { workspace = true }
 async-stream = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
-epub = { workspace = true, optional = true }
 futures = { workspace = true }
 glob = { workspace = true }
-lopdf = { workspace = true, optional = true }
+
 mime_guess = { workspace = true }
 ordered-float = { workspace = true }
 quick-xml = { workspace = true, optional = true }
 rayon = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "stream", "multipart"] }
-rig-derive = { version = "0.1.6", path = "rig-core-derive", optional = true }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -40,7 +38,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 url = { workspace = true }
 worker = { workspace = true, optional = true }
-rmcp = { version = "0.8.0", optional = true, features = [
+rmcp = {workspace = true, features = [
     "client",
     "transport-streamable-http-client",
     "transport-streamable-http-client-reqwest",
@@ -73,14 +71,10 @@ tracing-opentelemetry = "0.31.0"
 
 
 [features]
-default = ["reqwest/default", "rmcp"]
-all = ["derive", "pdf", "rayon"]
-derive = ["dep:rig-derive"]
-pdf = ["dep:lopdf"]
-epub = ["dep:epub", "dep:quick-xml"]
+default = ["reqwest/default"]
+all = [  "rayon"]
 rayon = ["dep:rayon"]
 worker = ["dep:worker"]
-rmcp = ["dep:rmcp"]
 socks = ["reqwest/socks"]
 # Replace "default-tls" with "rustls-tls" in "reqwest/default"
 reqwest-rustls = [

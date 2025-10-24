@@ -6,6 +6,7 @@ use crate::{
 };
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::info_span;
@@ -15,7 +16,6 @@ use crate::{
     agent::Agent,
     completion::{CompletionError, CompletionModel, PromptError},
     message::{Message, Text},
-    tool::ToolSetError,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -78,7 +78,7 @@ pub enum StreamingError {
     #[error("PromptError: {0}")]
     Prompt(#[from] Box<PromptError>),
     #[error("ToolSetError: {0}")]
-    Tool(#[from] ToolSetError),
+    Tool(#[from] rmcp::RmcpError),
 }
 
 /// A builder for creating prompt requests with customizable options.
@@ -284,10 +284,10 @@ where
                                 }
 
                                 tool_span.record("gen_ai.tool.name", &tool_call.function.name);
-                                tool_span.record("gen_ai.tool.call.arguments", tool_call.function.arguments.to_string());
+                                tool_span.record("gen_ai.tool.call.arguments", &tool_call.function.arguments.to_string());
 
                                 let tool_result = match
-                                agent.tools.call(&tool_call.function.name, tool_call.function.arguments.to_string()).await {
+                                agent.call(&tool_call.function.name, &tool_call.function.arguments).await {
                                     Ok(thing) => thing,
                                     Err(e) => e.to_string()
                                 };
@@ -295,7 +295,7 @@ where
                                 tool_span.record("gen_ai.tool.call.result", &tool_result);
 
                                 if let Some(ref hook) = self.hook {
-                                    hook.on_tool_result(&tool_call.function.name, &tool_call.function.arguments.to_string(), &tool_result.to_string())
+                                    hook.on_tool_result(&tool_call.function.name, &tool_call.function.arguments, &tool_result.to_string())
                                     .await;
                                 }
 
@@ -486,7 +486,7 @@ where
     fn on_tool_result(
         &self,
         tool_name: &str,
-        args: &str,
+        args: &Value,
         result: &str,
     ) -> impl Future<Output = ()> + Send {
         async {}

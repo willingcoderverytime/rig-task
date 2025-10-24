@@ -123,7 +123,7 @@ where
 {
     pub fn stream(inner: StreamingResult<R>) -> StreamingCompletionResponse<R> {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
-        let abortable_stream= Abortable::new(inner, abort_registration);
+        let abortable_stream = Abortable::new(inner, abort_registration);
         let pause_control = PauseControl::new();
         Self {
             inner: abortable_stream,
@@ -371,11 +371,7 @@ where
             }
             Ok(StreamedAssistantContent::ToolCall(tool_call)) => {
                 let res = agent
-                    .tools
-                    .call(
-                        &tool_call.function.name,
-                        tool_call.function.arguments.to_string(),
-                    )
+                    .call(&tool_call.function.name, &tool_call.function.arguments)
                     .await
                     .map_err(|e| std::io::Error::other(e.to_string()))?;
                 println!("\nResult: {res}");

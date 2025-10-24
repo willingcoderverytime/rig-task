@@ -5,14 +5,16 @@ use crate::{
         Chat, Completion, CompletionError, CompletionModel, CompletionRequestBuilder, Document,
         GetTokenUsage, Message, Prompt, PromptError,
     },
-    message::ToolChoice,
     streaming::{StreamingChat, StreamingCompletion, StreamingPrompt},
-    tool::ToolSet,
-    vector_store::{VectorStoreError, request::VectorSearchRequest},
 };
 use futures::{StreamExt, TryStreamExt, stream};
-use rmcp::{RoleClient, model::InitializeRequestParam, service::RunningService};
-use std::{collections::HashMap, sync::Arc};
+use rmcp::{
+    RoleClient,
+    model::{CallToolRequestParam, InitializeRequestParam},
+    service::RunningService,
+};
+use serde_json::Value;
+use std::{borrow::Cow, sync::Arc};
 
 const UNKNOWN_AGENT_NAME: &str = "Unnamed Agent";
 
@@ -60,16 +62,8 @@ where
     pub max_tokens: Option<u64>,
     /// Additional parameters to be passed to the model
     pub additional_params: Option<serde_json::Value>,
-    /// List of vector store, with the sample number
-    pub dynamic_context: Arc<Vec<(usize, Box<dyn crate::vector_store::VectorStoreIndexDyn>)>>,
-    /// Dynamic tools
-    pub dynamic_tools: Arc<Vec<(usize, Box<dyn crate::vector_store::VectorStoreIndexDyn>)>>,
     /// agent mcp server
-    pub mcp_client: Arc<Option<RunningService<RoleClient, InitializeRequestParam>>>,
-    /// Actual tool implementations  拥有高性能的Tools
-    pub tools: Arc<ToolSet>,
-    /// Whether or not the underlying LLM should be forced to use a tool before providing a response.
-    pub tool_choice: Option<ToolChoice>,
+    pub mcp_client: Option<Arc<RunningService<RoleClient, InitializeRequestParam>>>,
 }
 
 impl<M> Agent<M>
@@ -79,6 +73,47 @@ where
     /// Returns the name of the agent.
     pub(crate) fn name(&self) -> &str {
         self.name.as_deref().unwrap_or(UNKNOWN_AGENT_NAME)
+    }
+
+    pub async fn call(&self, func_name: &str, args: &Value) -> Result<String, CompletionError> {
+        if let Some(mcp_client) = self.mcp_client.clone() {
+            let obj = args.as_object();
+            let req = CallToolRequestParam {
+                name: Cow::Owned(func_name.to_string()),
+                arguments: obj.cloned(),
+            };
+            let result = mcp_client
+                .call_tool(req)
+                .await
+                .map_err(|e| CompletionError::MCPError(e.to_string()))?;
+
+            // Extract the result content as a string
+            let result_str = result
+                .content
+                .iter()
+                .map(|c| match &c.raw {
+                    rmcp::model::RawContent::Text(text) => text.text.clone(),
+                    rmcp::model::RawContent::Image(image) => {
+                        format!("[Image: {}]", image.mime_type)
+                    }
+                    rmcp::model::RawContent::Resource(resource) => match &resource.resource {
+                        rmcp::model::ResourceContents::TextResourceContents { text, .. } => {
+                            text.clone()
+                        }
+                        rmcp::model::ResourceContents::BlobResourceContents { .. } => {
+                            "[Binary Resource]".to_string()
+                        }
+                    },
+                    rmcp::model::RawContent::Audio(_) => "[Audio]".to_string(),
+                    rmcp::model::RawContent::ResourceLink(_) => "[Resource Link]".to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            return Ok(result_str);
+        }
+
+        Ok("".to_string())
     }
 }
 
@@ -94,13 +129,13 @@ where
         let prompt = prompt.into();
 
         // Find the latest message in the chat history that contains RAG text
-        let rag_text = prompt.rag_text();
-        let rag_text = rag_text.or_else(|| {
-            chat_history
-                .iter()
-                .rev()
-                .find_map(|message| message.rag_text())
-        });
+        // let rag_text = prompt.rag_text();
+        // let rag_text = rag_text.or_else(|| {
+        //     chat_history
+        //         .iter()
+        //         .rev()
+        //         .find_map(|message| message.rag_text())
+        // });
 
         let completion_request = self
             .model
@@ -115,105 +150,15 @@ where
         } else {
             completion_request
         };
-
-        // If the agent has RAG text, we need to fetch the dynamic context and tools
-        let agent = match &rag_text {
-            Some(text) => {
-                let dynamic_context = stream::iter(self.dynamic_context.iter())
-                    .then(|(num_sample, index)| async {
-                        let req = VectorSearchRequest::builder().query(text).samples(*num_sample as u64).build().expect("Creating VectorSearchRequest here shouldn't fail since the query and samples to return are always present");
-                        Ok::<_, VectorStoreError>(
-                            index
-                                .top_n(req)
-                                .await?
-                                .into_iter()
-                                .map(|(_, id, doc)| {
-                                    // Pretty print the document if possible for better readability
-                                    let text = serde_json::to_string_pretty(&doc)
-                                        .unwrap_or_else(|_| doc.to_string());
-
-                                    Document {
-                                        id,
-                                        text,
-                                        additional_props: HashMap::new(),
-                                    }
-                                })
-                                .collect::<Vec<_>>(),
-                        )
-                    })
-                    .try_fold(vec![], |mut acc, docs| async {
-                        acc.extend(docs);
-                        Ok(acc)
-                    })
-                    .await
-                    .map_err(|e| CompletionError::RequestError(Box::new(e)))?;
-
-                let dynamic_tools = stream::iter(self.dynamic_tools.iter())
-                    .then(|(num_sample, index)| async {
-                        let req = VectorSearchRequest::builder().query(text).samples(*num_sample as u64).build().expect("Creating VectorSearchRequest here shouldn't fail since the query and samples to return are always present");
-                        Ok::<_, VectorStoreError>(
-                            index
-                                .top_n_ids(req)
-                                .await?
-                                .into_iter()
-                                .map(|(_, id)| id)
-                                .collect::<Vec<_>>(),
-                        )
-                    })
-                    .try_fold(vec![], |mut acc, docs| async {
-                        for doc in docs {
-                            if let Some(tool) = self.tools.get(&doc) {
-                                acc.push(tool.definition(text.into()).await)
-                            } else {
-                                tracing::warn!("Tool implementation not found in toolset: {}", doc);
-                            }
-                        }
-                        Ok(acc)
-                    })
-                    .await
-                    .map_err(|e| CompletionError::RequestError(Box::new(e)))?;
-
-                let static_tools = stream::iter(self.static_tools.iter())
-                    .filter_map(|toolname| async move {
-                        if let Some(tool) = self.tools.get(toolname) {
-                            Some(tool.definition(text.into()).await)
-                        } else {
-                            tracing::warn!(
-                                "Tool implementation not found in toolset: {}",
-                                toolname
-                            );
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .await;
-
-                completion_request
-                    .documents(dynamic_context)
-                    .tools([static_tools.clone(), dynamic_tools].concat())
-            }
-            None => {
-                let static_tools = stream::iter(self.static_tools.iter())
-                    .filter_map(|toolname| async move {
-                        if let Some(tool) = self.tools.get(toolname) {
-                            // TODO: tool definitions should likely take an `Option<String>`
-                            Some(tool.definition("".into()).await)
-                        } else {
-                            tracing::warn!(
-                                "Tool implementation not found in toolset: {}",
-                                toolname
-                            );
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .await;
-
-                completion_request.tools(static_tools)
-            }
-        };
-
-        Ok(agent)
+        if let Some(client) = self.mcp_client.clone() {
+            let tools = client
+                .list_all_tools()
+                .await
+                .map_err(|_| CompletionError::MCPError("".to_string()))?;
+            return Ok(completion_request.tools(tools));
+        }
+        Ok(completion_request)
+        // todo  : If the agent has RAG text, we need to fetch the dynamic context and tools
     }
 }
 

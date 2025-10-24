@@ -1,8 +1,8 @@
 
-use rig::completion::ToolDefinition;
 use rig::message::ToolCall;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use rmcp::model::Tool;
 
 
 
@@ -12,19 +12,15 @@ use serde_json::Value;
 pub(crate) struct OlToolDefinition {
     #[serde(rename = "type")]
     pub type_field: String, // Fixed as "function"
-    pub function: ToolDefinition,
+    pub function: Tool,
 }
 
 /// Convert internal ToolDefinition (from the completion module) into Ollama's tool definition.
-impl From<ToolDefinition> for OlToolDefinition {
-    fn from(tool: ToolDefinition) -> Self {
+impl From<Tool> for OlToolDefinition {
+    fn from(tool: Tool) -> Self {
         OlToolDefinition {
             type_field: "function".to_owned(),
-            function: ToolDefinition {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters,
-            },
+            function: tool,
         }
     }
 }

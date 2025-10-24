@@ -112,16 +112,10 @@ pub mod cli_chatbot;
 pub mod client;
 pub mod completion;
 pub mod embeddings;
-pub mod extractor;
 pub mod json_utils;
-pub mod loaders;
 pub mod one_or_many;
-pub mod pipeline;
 pub mod prelude;
 pub mod streaming;
-pub mod tool;
-pub mod tools;
-pub mod vector_store;
 
 // Re-export commonly used types and traits
 pub use completion::message;

@@ -17,9 +17,7 @@ async-stream = { workspace = true }
 base64 = { workspace = true }
 rig-core = { path = "../../rig-core", features = [
     "worker",
-    "rmcp",
 ] }
-rig-derive = { path = "../../rig-core/rig-core-derive" }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -33,6 +31,12 @@ futures = { workspace = true }
 thiserror = { workspace = true }
 reqwest-eventsource = { workspace = true }
 worker = { workspace = true, optional = true }
+
+rmcp = {workspace = true, features = [
+    "client",
+    "schemars",
+] }
+
 [dev-dependencies]
 anyhow = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }

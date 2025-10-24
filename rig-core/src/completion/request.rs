@@ -71,9 +71,9 @@ use crate::{OneOrMany, streaming};
 use crate::{
     json_utils,
     message::{Message, UserContent},
-    tool::ToolSetError,
 };
 use futures::future::BoxFuture;
+use rmcp::model::Tool;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -104,6 +104,9 @@ pub enum CompletionError {
     #[error("ResponseError: {0}")]
     ResponseError(String),
 
+    #[error("ResponseError: {0}")]
+    MCPError(String),
+
     /// Error returned by the completion model provider
     #[error("ProviderError: {0}")]
     ProviderError(String),
@@ -118,7 +121,7 @@ pub enum PromptError {
 
     /// There was an error while using a tool
     #[error("ToolCallError: {0}")]
-    ToolError(#[from] ToolSetError),
+    ToolError(#[from] rmcp::RmcpError),
 
     /// The LLM tried to call too many tools during a multi-turn conversation.
     /// To fix this, you may either need to lower the amount of tools your model has access to (and then create other agents to share the tool load)
@@ -159,13 +162,6 @@ impl std::fmt::Display for Document {
             }
         )
     }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct ToolDefinition {
-    pub name: String,
-    pub description: String,
-    pub parameters: serde_json::Value,
 }
 
 // ================================================================
@@ -425,7 +421,7 @@ pub struct CompletionRequest {
     /// The documents to be sent to the completion model provider
     pub documents: Vec<Document>,
     /// The tools to be sent to the completion model provider
-    pub tools: Vec<ToolDefinition>,
+    pub tools: Vec<Tool>,
     /// The temperature to be sent to the completion model provider
     pub temperature: Option<f64>,
     /// The max tokens to be sent to the completion model provider
@@ -516,7 +512,7 @@ pub struct CompletionRequestBuilder<M: CompletionModel> {
     preamble: Option<String>,
     chat_history: Vec<Message>,
     documents: Vec<Document>,
-    tools: Vec<ToolDefinition>,
+    tools: Vec<Tool>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     tool_choice: Option<ToolChoice>,
@@ -577,13 +573,13 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     }
 
     /// Adds a tool to the completion request.
-    pub fn tool(mut self, tool: ToolDefinition) -> Self {
+    pub fn tool(mut self, tool: Tool) -> Self {
         self.tools.push(tool);
         self
     }
 
     /// Adds a list of tools to the completion request.
-    pub fn tools(self, tools: Vec<ToolDefinition>) -> Self {
+    pub fn tools(self, tools: Vec<Tool>) -> Self {
         tools
             .into_iter()
             .fold(self, |builder, tool| builder.tool(tool))

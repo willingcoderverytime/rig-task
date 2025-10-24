@@ -1,5 +1,6 @@
 pub(crate) mod streaming;
 
+use serde_json::Value;
 use std::{
     future::IntoFuture,
     marker::PhantomData,
@@ -14,7 +15,6 @@ use crate::{
     OneOrMany,
     completion::{Completion, CompletionError, CompletionModel, Message, PromptError, Usage},
     message::{AssistantContent, UserContent},
-    tool::ToolSetError,
 };
 
 use super::Agent;
@@ -162,7 +162,7 @@ where
 
     #[allow(unused_variables)]
     /// Called before a tool is invoked.
-    fn on_tool_call(&self, tool_name: &str, args: &str) -> impl Future<Output = ()> + Send {
+    fn on_tool_call(&self, tool_name: &str, args: &Value) -> impl Future<Output = ()> + Send {
         async {}
     }
 
@@ -171,7 +171,7 @@ where
     fn on_tool_result(
         &self,
         tool_name: &str,
-        args: &str,
+        args: &Value,
         result: &str,
     ) -> impl Future<Output = ()> + Send {
         async {}
@@ -405,22 +405,28 @@ where
                     async move {
                         if let AssistantContent::ToolCall(tool_call) = choice {
                             let tool_name = &tool_call.function.name;
-                            let args = tool_call.function.arguments.to_string();
+                            
                             let tool_span = tracing::Span::current();
                             tool_span.record("gen_ai.tool.name", tool_name);
                             tool_span.record("gen_ai.tool.call.id", &tool_call.id);
-                            tool_span.record("gen_ai.tool.call.arguments", &args);
+                            tool_span.record("gen_ai.tool.call.arguments", & tool_call.function.arguments.to_string());
                             if let Some(hook) = hook1 {
-                                hook.on_tool_call(tool_name, &args).await;
+                                hook.on_tool_call(tool_name, & tool_call.function.arguments).await;
                             }
-                            let output = agent.tools.call(tool_name, args.clone()).await?;
+                            let output = match agent.call(tool_name, & tool_call.function.arguments).await {
+                                Ok(output) => output,
+                                Err(e) => {
+                                    let error_msg = format!("CompletionError: {:?}", e);
+                                    error_msg
+                                }
+                            };
                             if let Some(hook) = hook2 {
-                                hook.on_tool_result(tool_name, &args, &output.to_string())
+                                hook.on_tool_result(tool_name, & tool_call.function.arguments, &output.to_string())
                                     .await;
                             }
                             tool_span.record("gen_ai.tool.call.result", &output);
                             tracing::info!(
-                                "executed tool {tool_name} with args {args}. result: {output}"
+                                "executed tool {tool_name} result: {output}"
                             );
                             if let Some(call_id) = tool_call.call_id.clone() {
                                 Ok(UserContent::tool_result_with_call_id(
@@ -442,7 +448,7 @@ where
                     }
                     .instrument(tool_span)
                 })
-                .collect::<Vec<Result<UserContent, ToolSetError>>>()
+                .collect::<Vec<Result<UserContent, rmcp::RmcpError>>>()
                 .await
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()

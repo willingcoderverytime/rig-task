@@ -4,7 +4,6 @@ use crate::completion::{
     CompletionError, CompletionModel, CompletionModelDyn, CompletionRequest, CompletionResponse,
     GetTokenUsage,
 };
-use crate::extractor::ExtractorBuilder;
 use crate::streaming::StreamingCompletionResponse;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -48,14 +47,6 @@ pub trait CompletionClient: ProviderClient + Clone {
     /// ```
     fn agent(&self, model: &str) -> AgentBuilder<Self::CompletionModel> {
         AgentBuilder::new(self.completion_model(model))
-    }
-
-    /// Create an extractor builder with the given completion model.
-    fn extractor<T>(&self, model: &str) -> ExtractorBuilder<Self::CompletionModel, T>
-    where
-        T: JsonSchema + for<'a> Deserialize<'a> + Serialize + Send + Sync,
-    {
-        ExtractorBuilder::new(self.completion_model(model))
     }
 }
 
