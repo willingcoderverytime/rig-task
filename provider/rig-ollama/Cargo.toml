@@ -31,9 +31,16 @@ futures = { workspace = true }
 thiserror = { workspace = true }
 reqwest-eventsource = { workspace = true }
 worker = { workspace = true, optional = true }
-
-rmcp = {workspace = true, features = [
+tokio-util.workspace=true
+rmcp = { workspace = true, features = [
+    "server",
+    "macros",
     "client",
+    "transport-sse-server",
+    "transport-io",
+    "transport-streamable-http-server",
+    "auth",
+    "elicitation",
     "schemars",
 ] }
 
@@ -41,6 +48,17 @@ rmcp = {workspace = true, features = [
 anyhow = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 tracing-subscriber = { workspace = true }
+rmcp = { workspace = true, features = [
+    "server",
+    "macros",
+    "client",
+    "transport-sse-server",
+    "transport-io",
+    "transport-streamable-http-server",
+    "auth",
+    "elicitation",
+    "schemars",
+] }
 
 [features]
 default = ["worker"]
@@ -67,3 +85,6 @@ name = "ollama_streaming_pause_control"
 
 [[example]]
 name = "ollama_streaming_with_tools"
+
+
+
